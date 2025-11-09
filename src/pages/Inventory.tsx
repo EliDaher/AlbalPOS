@@ -70,7 +70,7 @@ export default function Inventory() {
                   setIsOpen={setOpenForm}
                   row={row}
                 />
-                <Button
+                {/* <Button
                   variant={"outline"}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -80,7 +80,7 @@ export default function Inventory() {
                   }}
                 >
                   التفاصيل
-                </Button>
+                </Button> */}
               </div>
             );
           }}
