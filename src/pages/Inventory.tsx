@@ -3,7 +3,6 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import AddItemForm from "@/components/Products/AddItemForm";
 import AddProductForm from "@/components/Products/AddItemForm";
 import MakeProduct from "@/components/Products/MakeProduct";
-import { Button } from "@/components/ui/button";
 import getAllInventoryItems from "@/services/inventory";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -30,20 +29,19 @@ export default function Inventory() {
   ];
 
   const isRowSelected = (row: any) => {
-    return selectedRows.some((r) => JSON.stringify(r) === JSON.stringify({...row, needQty: 0}));
+    return selectedRows.some((r) => r.id === row.id);
   };
 
   const toggleRowSelection = (row: any) => {
     setSelectedRows((prev) => {
       const isSelected = isRowSelected(row);
       if (isSelected) {
-        return prev.filter((r) => JSON.stringify(r) !== JSON.stringify({...row, needQty: 0}));
+        return prev.filter((r) => r.id !== row.id);
       } else {
-        return [...prev, row, ];
+        return [...prev, row];
       }
     });
   };
-    
 
   return (
     <DashboardLayout>
@@ -56,11 +54,10 @@ export default function Inventory() {
           columns={ProductsColumns}
           data={products || []}
           onRowClick={(row) => toggleRowSelection(row)}
-          getRowClassName={(row) =>(
-              selectedRows?.some((r) => r == row)
+          getRowClassName={(row) =>
+            selectedRows?.some((r) => r == row)
               ? "bg-green-50 hover:bg-green-100"
               : ""
-            )
           }
           renderRowActions={(row) => {
             return (
@@ -87,11 +84,13 @@ export default function Inventory() {
         />
       </div>
       {selectedRows?.length > 0 ? (
-        <MakeProduct
-          selectedRows={selectedRows}
-          setSelectedRows={setSelectedRows}
-          products={selectedRows}
-        />
+        <div>
+          <MakeProduct
+            selectedRows={selectedRows}
+            setSelectedRows={setSelectedRows}
+            products={selectedRows}
+          />
+        </div>
       ) : (
         <div></div>
       )}

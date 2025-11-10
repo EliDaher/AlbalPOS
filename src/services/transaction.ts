@@ -144,6 +144,26 @@ export async function sellInventoryItems(dataToSend: SellInventoryItemData) {
   }
 }
 
+export async function decriseItemQuantity(updates: { id: string; quantity: number }[]) {
+  try {
+    console.log(updates)
+    const response = await apiClient.post(
+      "/api/transaction/decriseItemQuantity",
+      { items: updates },
+    );
+
+    return response.data;
+  } catch (err: any) {
+    console.error("خطأ أثناء تنفيذ عملية الاخراج من المخزون:", err);
+
+    if (err.response?.data?.message) {
+      throw new Error(err.response.data.message);
+    }
+
+    throw new Error("فشل الاتصال بالسيرفر");
+  }
+}
+
 export async function endOrder(dataToSend
   /*: {
   tableId: string; // 🟢 معرف الطاولة

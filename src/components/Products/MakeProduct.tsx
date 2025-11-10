@@ -12,6 +12,9 @@ import { Button } from "../ui/button";
 import SellInventoryItem from "./SellInventoryItem";
 import CreateProduct from "./CreateProduct";
 import { Badge } from "../ui/badge";
+import PopupForm from "../ui/custom/PopupForm";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { decriseItemQuantity } from "@/services/transaction";
 
 type InventoryUser = { username: string; [key: string]: any };
 
@@ -42,6 +45,8 @@ export default function MakeProduct({
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const storedUser = JSON.parse(
@@ -58,6 +63,20 @@ export default function MakeProduct({
     { key: "costPerUnit", label: "سعر الواحدة", sortable: true },
     { key: "category", label: "الصنف", sortable: true },
   ];
+
+  const decriseMutation = useMutation({
+    mutationFn: (updates: { id: string; quantity: number }[]) =>
+      decriseItemQuantity(updates),
+    onSuccess: () => {
+      alert("تم انقاص الكميات من المخزون بنجاح.");
+      setSelectedRows([]);
+      queryClient.invalidateQueries({ queryKey: ["products-table"] });
+    },
+    onError: (error) => {
+      console.error(error);
+      alert("حدث خطأ أثناء انقاص الكميات من المخزون.");
+    },
+  });
 
   const handleNeedQtyChange = (id: string, newValue: number) => {
     setSelectedRows((prev) =>
@@ -134,6 +153,49 @@ export default function MakeProduct({
           {/* <Button className="w-full" onClick={() => setMode("create")}>
             اضافة الى قائمة المنتجات
           </Button> */}
+          <PopupForm
+            isOpen={isOpen}
+            setIsOpen={setIsOpen}
+            title=""
+            trigger={<Button onClick={(e)=>{
+              e.stopPropagation();
+              selectedRows.map(item=>{
+                if(!item.needQty || item.needQty<=0){
+                  alert(`الرجاء تحديد كمية صحيحة للمنتج: ${item.name}`);
+                  throw new Error("Invalid quantity");
+                }else{
+                  setIsOpen(true);
+                }
+              });
+            }} className="w-full">انقاص من المخزون</Button>}
+          >
+            <div>
+              {selectedRows.map((item) => (
+                <div key={item.id} className="flex justify-between mb-2">
+                  <span>
+                    {item.needQty}&nbsp;
+                    {item.unit} من&nbsp;
+                    {item.name}
+                  </span>
+                </div>
+              ))}
+              هل انت متأكد من انك تريد انقاص الكميات المحددة من المخزون؟
+            </div>
+            <Button
+              onClick={() => {
+                let updates = []
+                selectedRows.map((item) => (
+                  updates.push({id: item.id, quantity: item.needQty})
+                ));
+                decriseMutation.mutate(
+                  updates
+                );
+                setIsOpen(false);
+              }}
+            >
+              تأكيد وانقاص من المخزون
+            </Button>
+          </PopupForm>
         </div>
       </CardHeader>
       <CardContent>
