@@ -3,8 +3,8 @@ import axios from "axios";
 // Create axios instance with default config
 export const apiClient = axios.create({
   baseURL:
-    //import.meta.env.VITE_API_BASE_URL || "https://inventoryserver-xj57.onrender.com",
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
+    import.meta.env.VITE_API_BASE_URL || "https://inventoryserver-xj57.onrender.com",
+    // import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
   // import.meta.env.VITE_API_BASE_URL || "https://albal.onrender.com",
   timeout: 40000,
   headers: {
