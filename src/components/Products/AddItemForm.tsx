@@ -36,17 +36,16 @@ export default function AddItemForm({
 
   // تعبئة القيم عند وجود row
   useEffect(() => {
-    if (row) {
+    if (row && isOpen) {
       setName(row.name || "");
       setCategory(row.category || "");
       setUnit(row.unit || "");
-      setQuantity(row.quantity?.toString() || "0");
       setMinQuantity(row.minQuantity || 0);
       setCostPerUnit(row.costPerUnit || 0);
       setSellPerUnit(row.sellPerUnit || 0);
       setNotes(row.notes || "");
     }
-  }, [row]);
+  }, [row, isOpen]);
 
   // إعادة تعيين الفورم عند الإغلاق
   useEffect(() => {
@@ -77,7 +76,7 @@ export default function AddItemForm({
     onSuccess: () => {
       alert("✅ تم شراء المنتج وتسجيل العملية بنجاح!");
       setIsOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["products-table"] });
+      queryClient.invalidateQueries({ queryKey: ["items-table"] });
     },
     onError: (error) => {
       console.error(error);
@@ -109,8 +108,8 @@ export default function AddItemForm({
         newErrors.partValue =
           "⚠️ الدفعة الجزئية يجب أن تكون أقل من المجموع الكلي";
     }
-
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) alert(JSON.stringify(newErrors));
     if (Object.keys(newErrors).length > 0) return;
 
     const totalAmount = Number(quantity) * costPerUnit;
@@ -175,11 +174,7 @@ export default function AddItemForm({
       setIsOpen={setIsOpen}
       trigger={<Button>شراء منتج</Button>}
     >
-      <form
-        dir="rtl"
-        onSubmit={handleSubmit}
-        className="grid grid-cols-2 gap-3"
-      >
+      <form dir="rtl" className="grid grid-cols-2 gap-3">
         <FormInput
           id="productName"
           label="اسم المنتج"
@@ -287,7 +282,9 @@ export default function AddItemForm({
 
         <Button
           className="col-span-2 mt-3"
-          type="submit"
+          onClick={(e)=>{
+            handleSubmit(e);
+          }}
           variant="default"
           disabled={buyMutation.isPending}
         >

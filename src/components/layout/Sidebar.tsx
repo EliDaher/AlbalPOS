@@ -8,6 +8,7 @@ import {
   Table2Icon,
   TableIcon,
   Box,
+  Coffee,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,12 @@ const navigationGroups = [
     icon: Package,
     allowed: ["admin"],
   },
-  // {
-  //   name: "المنتجات",
-  //   href: "/Products",
-  //   icon: Package,
-  //   allowed: ["admin"],
-  // },
+  {
+    name: "المنتجات",
+    href: "/Products",
+    icon: Coffee,
+    allowed: ["admin"],
+  },
   {
     name: "الموردين",
     href: "/Suppliers",

@@ -106,7 +106,8 @@ export default function SupplierSelect({
           onChange={(e) => setSupplierNumber(e.target.value)}
         />
 
-        <Button type="submit" onClick={()=>{
+        <Button type="submit" onClick={(e)=>{
+          e.preventDefault();
           if (!supplierName || !supplierNumber) {
             alert("يرجى ملء جميع الحقول");
             return;

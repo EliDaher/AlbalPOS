@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import OrderSelect from "@/components/Tables/OrderSelect";
@@ -15,19 +15,21 @@ import FormInput from "@/components/ui/custom/FormInput";
 
 import getAllInventoryItems from "@/services/inventory";
 import { createOrder, getOrderById, updateOrder } from "@/services/order";
-import { updateTableState } from "@/services/tables";
+import { getTableById, updateTableState } from "@/services/tables";
 
-import { InventoryItem, Order } from "@/Types/POSTypes";
+import { InventoryItem, Order, OrderItem, OrderProducts, Product } from "@/Types/POSTypes";
 import { inventoryUser } from "@/components/layout/Header";
 import { endOrder } from "@/services/transaction";
 import CustomerSelect from "@/components/Customers/AddCustomerForm";
+import { getAllProducts } from "@/services/products";
+import { Loader2 } from "lucide-react";
 
 export default function TableDetails() {
-  const location = useLocation();
-  const tableData = location.state;
   const queryClient = useQueryClient();
+  const { id } = useParams();
 
-  const [selectedProducts, setSelectedProducts] = useState<InventoryItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<OrderProducts[]>([]);
   const [amount, setAmount] = useState("");
   const [discount, setDiscount] = useState(0);
   const [partValue, setPartValue] = useState(0);
@@ -39,37 +41,41 @@ export default function TableDetails() {
   const [customerId, setCustomerId] = useState('')
   const [selectOpen, setSelectOpen] = useState('')
 
-  // ✅ جلب المستخدم من التخزين المحلي
   useEffect(() => {
     const storedUser = localStorage.getItem("InventoryUser");
     if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
 
-  // ✅ جلب جميع المنتجات
-  const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: ["products-table"],
-    queryFn: getAllInventoryItems,
+
+  const { data: tableData, isLoading } = useQuery({
+    queryKey: ["tableData", id],
+    queryFn: () => getTableById(id),
+    enabled: !!id,
   });
 
-  // ✅ جلب تفاصيل الطلب الحالي (إن وجد)
+
+  useEffect(()=>{
+    console.log(id)
+  }, [id])
+
   const {
     data: orderDetails,
     isLoading: orderDetailsLoading,
     isError,
   } = useQuery({
-    queryKey: ["orderDetails", tableData.currentOrderId],
-    queryFn: () => getOrderById(tableData.currentOrderId),
-    enabled: !!tableData.currentOrderId,
+    queryKey: ["orderDetails", tableData?.currentOrderId],
+    queryFn: () => getOrderById(tableData?.currentOrderId),
+    enabled: !!tableData?.currentOrderId,
   });
 
-  // ✅ تحميل عناصر الطلب في حالة وجود طلب مفتوح
   useEffect(() => {
-    if (orderDetails?.items && selectedProducts.length === 0) {
-      setSelectedProducts(orderDetails.items as any);
+    console.log("📦 تفاصيل الطلب:", orderDetails);
+    if (orderDetails?.items && selectedItems.length === 0) {
+      setSelectedItems(orderDetails.items);
+      setSelectedProducts(orderDetails.products);
     }
   }, [orderDetails]);
 
-  // ✅ إنشاء طلب جديد
   const createOrderMutation = useMutation({
     mutationFn: (orderData: Order) => createOrder({ orderData }),
     onSuccess: () => {
@@ -91,7 +97,8 @@ export default function TableDetails() {
       
       queryClient.invalidateQueries({ queryKey: ["tables-table"] });
       queryClient.invalidateQueries({ queryKey: ["customers-table"] });
-      
+      queryClient.invalidateQueries({ queryKey: ["tableData", id] });
+
     },
     onError: (err: any) => {
       console.error("❌ خطأ أثناء إنهاء الطلب:", err);
@@ -100,7 +107,6 @@ export default function TableDetails() {
   });
 
 
-  // ✅ إنهاء الطلب (دفع أو دين)
   const handleFinishOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -130,13 +136,14 @@ export default function TableDetails() {
       orderData: {
         id: tableData.currentOrderId,
         paymentMethod,
+        items: selectedItems,
       },
       createdBy: user?.username || "غير معروف",
       customerId: customerId || "unknown",
       paymentData: {
         isDebt: paymentMethod,
         amount: paidAmount,
-        items: selectedProducts,
+        items: selectedItems,
         subTotal: amount,
         discount,
         total,
@@ -148,12 +155,8 @@ export default function TableDetails() {
       },
     };
 
-    console.log("📦 البيانات المرسلة لإنهاء الطلب:", dataToSend);
-
-    // ✅ إرسال الطلب إلى السيرفر
     await endOrderMutation.mutateAsync(dataToSend);
 
-    // ✅ تحديث حالة الطاولة بعد الإنهاء
     await updateTableState({
       id: tableData.id,
       state: "available",
@@ -164,7 +167,6 @@ export default function TableDetails() {
     queryClient.invalidateQueries({ queryKey: ["tables-table"] });
   };
 
-  // ✅ تحديث الطلب الحالي
   const updateOrderMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: any }) =>
       updateOrder({ id, updates }),
@@ -180,13 +182,8 @@ export default function TableDetails() {
     },
   });
 
-  // ✅ إنشاء الطلب
   const handleCreateOrder = async () => {
-    if (productsLoading) {
-      alert("المنتجات مازالت قيد التحميل...");
-      return;
-    }
-    if (selectedProducts.length === 0) {
+    if (selectedItems.length === 0) {
       alert("⚠️ الرجاء اختيار منتج واحد على الأقل قبل إنشاء الطلب.");
       return;
     }
@@ -197,7 +194,8 @@ export default function TableDetails() {
     const orderData: Order = {
       tableId: tableData.id,
       type: "dine-in",
-      items: selectedProducts as any,
+      items: selectedItems,
+      products: selectedProducts,
       subTotal: Number(amount), // ⚠️ لم نغير طريقة الحساب كما طلبت
       discount,
       tax: 0,
@@ -214,11 +212,7 @@ export default function TableDetails() {
   };
 
   const handleUpdateOrder = async () => {
-    if (productsLoading) {
-      alert("المنتجات مازالت قيد التحميل...");
-      return;
-    }
-    if (selectedProducts.length === 0) {
+    if (selectedItems.length === 0) {
       alert("⚠️ الرجاء اختيار منتج واحد على الأقل قبل تعديل الطلب.");
       return;
     }
@@ -229,8 +223,9 @@ export default function TableDetails() {
     const updates: Order = {
       tableId: tableData.id,
       type: "dine-in",
-      items: selectedProducts as any,
-      subTotal: Number(amount), // ⚠️ لم نغير طريقة الحساب كما طلبت
+      items: selectedItems,
+      products: selectedProducts,
+      subTotal: Number(amount), 
       discount,
       tax: 0,
       total,
@@ -245,131 +240,147 @@ export default function TableDetails() {
     updateOrderMutation.mutate({ id: tableData.currentOrderId, updates });
   };
 
-  // ✅ إعادة تعيين الحقول بعد الإنشاء
   const resetForm = () => {
     setAmount("");
     setNote("");
-    setSelectedProducts([]);
+    setSelectedItems([]);
     setDiscount(0);
     setPartValue(0);
     setPaymentMethod("cash");
   };
 
-  return (
-    <DashboardLayout>
-      <Card dir="rtl" className="max-w-3xl mx-auto mt-6">
-        <CardHeader>
-          <CardTitle>الطاولة: {tableData.name}</CardTitle>
-          <CardDescription>الحالة: {tableData.status}</CardDescription>
-        </CardHeader>
+  if (isLoading){
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center py-10">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+    return (
+      <DashboardLayout>
+        <Card dir="rtl" className="max-w-3xl mx-auto mt-6">
+          <CardHeader>
+            <CardTitle>الطاولة: {tableData?.name}</CardTitle>
+            <CardDescription>الحالة: {tableData?.status}</CardDescription>
+          </CardHeader>
 
-        <CardContent className="space-y-5">
-          {/* اختيار المنتجات */}
-          <OrderSelect
-            products={products || []}
-            setAmount={setAmount}
-            onChange={(selected) => setSelectedProducts(selected as any)}
-            selectedProducts={selectedProducts}
-            setSelectedProducts={setSelectedProducts}
-          />
+          <CardContent className="space-y-5">
+            {/* اختيار المنتجات */}
+            <OrderSelect
+              setAmount={setAmount}
+              onChange={(selected: OrderItem[]) => {
+                setSelectedItems(selected);
+              }}
+              selectedItems={selectedItems}
+              setSelectedItems={setSelectedItems}
+              selectedProducts={selectedProducts}
+              setSelectedProducts={setSelectedProducts}
+            />
 
-          {JSON.stringify(orderDetails?.items) !==
-            JSON.stringify(selectedProducts) && tableData.currentOrderId && (
-            <Button onClick={() => handleUpdateOrder()}>حفظ التعديلات</Button>
-          )}
-
-          {/* حالة وجود طلب مفتوح */}
-          {tableData.currentOrderId ? (
-            <form className="space-y-4 mt-4" onSubmit={handleFinishOrder}>
-              <div className="flex justify-between">
-                <FormInput
-                  label="الحسم"
-                  type="number"
-                  value={discount}
-                  onChange={(e) => setDiscount(Number(e.target.value))}
-                />
-                <FormInput 
-                  className=""
-                  label="المبلغ النهائي "  
-                  value={Number(amount) - discount}
-                />
-              </div>
-
-              {/* خيارات الدفع */}
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  type="button"
-                  variant={paymentMethod === "cash" ? "default" : "outline"}
-                  onClick={() => setPaymentMethod("cash")}
-                >
-                  نقدًا
+            {JSON.stringify(orderDetails?.items) !==
+              JSON.stringify(selectedItems) &&
+              tableData?.currentOrderId && (
+                <Button onClick={() => handleUpdateOrder()}>
+                  حفظ التعديلات
                 </Button>
-                <Button
-                  type="button"
-                  variant={paymentMethod === "part" ? "default" : "outline"}
-                  onClick={() => setPaymentMethod("part")}
-                >
-                  جزئي
-                </Button>
-                <Button
-                  type="button"
-                  variant={paymentMethod === "debt" ? "default" : "outline"}
-                  onClick={() => setPaymentMethod("debt")}
-                >
-                  دين
-                </Button>
-              </div>
-
-              {["debt", "part"].includes(paymentMethod) && (
-                <CustomerSelect
-                  isOpen={selectOpen}
-                  setIsOpen={setSelectOpen}
-                  customerId={customerId}
-                  setCustomerId={setCustomerId}
-                  className={""}
-                />
               )}
 
-              {paymentMethod === "part" && (
+            {/* حالة وجود طلب مفتوح */}
+            {tableData?.currentOrderId ? (
+              <form className="space-y-4 mt-4" onSubmit={handleFinishOrder}>
+                <div className="flex justify-between">
+                  <FormInput
+                    label="الحسم"
+                    type="number"
+                    value={discount}
+                    onChange={(e) => setDiscount(Number(e.target.value))}
+                  />
+                  <FormInput
+                    className=""
+                    label="المبلغ النهائي "
+                    value={Number(amount) - discount}
+                  />
+                </div>
+
+                {/* خيارات الدفع */}
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "cash" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("cash")}
+                  >
+                    نقدًا
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "part" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("part")}
+                  >
+                    جزئي
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "debt" ? "default" : "outline"}
+                    onClick={() => setPaymentMethod("debt")}
+                  >
+                    دين
+                  </Button>
+                </div>
+
+                {["debt", "part"].includes(paymentMethod) && (
+                  <CustomerSelect
+                    isOpen={selectOpen}
+                    setIsOpen={setSelectOpen}
+                    customerId={customerId}
+                    setCustomerId={setCustomerId}
+                    className={""}
+                  />
+                )}
+
+                {paymentMethod === "part" && (
+                  <FormInput
+                    label="قيمة الدفعة الجزئية"
+                    type="number"
+                    value={partValue.toString()}
+                    onChange={(e) => setPartValue(Number(e.target.value))}
+                  />
+                )}
+
                 <FormInput
-                  label="قيمة الدفعة الجزئية"
-                  type="number"
-                  value={partValue.toString()}
-                  onChange={(e) => setPartValue(Number(e.target.value))}
+                  label="ملاحظات"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
                 />
-              )}
 
-              <FormInput
-                label="ملاحظات"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-
+                <Button
+                  className="w-full"
+                  type="submit"
+                  variant="default"
+                  disabled={endOrderMutation.isPending}
+                >
+                  {endOrderMutation.isPending
+                    ? "جاري الإنهاء..."
+                    : "إنهاء الطلب"}
+                </Button>
+              </form>
+            ) : (
+              // حالة إنشاء طلب جديد
               <Button
                 className="w-full"
-                type="submit"
+                type="button"
                 variant="default"
-                disabled={endOrderMutation.isPending}
+                onClick={handleCreateOrder}
+                disabled={createOrderMutation.isPending}
               >
-                {endOrderMutation.isPending ? "جاري الإنهاء..." : "إنهاء الطلب"}
+                {createOrderMutation.isPending
+                  ? "جاري الإنشاء..."
+                  : "إنشاء الطلب"}
               </Button>
-            </form>
-          ) : (
-            // حالة إنشاء طلب جديد
-            <Button
-              className="w-full"
-              type="button"
-              variant="default"
-              onClick={handleCreateOrder}
-              disabled={createOrderMutation.isPending || productsLoading}
-            >
-              {createOrderMutation.isPending
-                ? "جاري الإنشاء..."
-                : "إنشاء الطلب"}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    </DashboardLayout>
-  );
+            )}
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
 }

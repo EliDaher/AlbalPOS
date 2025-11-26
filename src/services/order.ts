@@ -9,7 +9,7 @@ import apiClient from "@/lib/axios";
 export async function createOrder({ orderData }: { orderData: Order }) {
   try {
     // ✅ تحقق من وجود بيانات أساسية قبل الإرسال
-    if (!orderData || !orderData.items || orderData.items.length === 0) {
+    if (!orderData || !orderData.items || orderData.items.length === 0 || !orderData.products || orderData.products.length === 0) {
       throw new Error("يجب تحديد عناصر الطلب (items) قبل الإرسال.");
     }
 

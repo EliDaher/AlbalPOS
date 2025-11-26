@@ -1,14 +1,25 @@
 import apiClient from "@/lib/axios";
 import { Table } from "@/Types/POSTypes";
 
+
 export default async function getAllTables() {
   try {
     const response = await apiClient.get("/api/tables");
-
+    
     return response.data;
   } catch (err) {
     console.error("خطأ في جلب البيانات:", err);
     throw new Error;
+  }
+}
+
+export async function getTableById(id: string) {
+  try {
+    const response = await apiClient.get(`/api/tables/${id}`);
+    return response.data;
+  } catch (err) {
+    console.error("خطأ في جلب البيانات:", err);
+    throw new Error();
   }
 }
 

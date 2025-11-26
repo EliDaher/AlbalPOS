@@ -75,10 +75,17 @@ export interface customer {
 }
 
 export interface OrderItem {
-  id: string;
+  itemId: string; // "p1",
+  itemName: string;
+  quantity: number; // 2,
+  price: number; // 4500,
+  total: number;
+}
+
+export interface OrderProducts {
   productId: string;
+  productName: string;
   quantity: number;
-  price: number;
   total: number;
 }
 
@@ -87,6 +94,7 @@ export interface Order {
   tableId?: string | null;
   type: "dine-in" | "takeaway" | "delivery";
   items: OrderItem[];
+  products: OrderProducts[];
   subTotal: number;
   discount: number;
   tax: number;
@@ -109,4 +117,23 @@ export interface Table {
   capacity: number;
   location?: string;
   createdAt?: string;
+}
+
+export interface Product {
+  id?:  string; // "p1",
+  name: string; // "شاورما دجاج",
+  category: string; // "وجبات",
+  imageUrl?: string; //"/images/products/shawarma.jpg"
+  prepTime?: number;
+  cost: number; // 2500,
+  price: number; // 4500,
+  timesSold: number; //125
+  ingredients:
+    {
+      itemId: string; // "i1",
+      itemName: string;
+      quantity: number; // 0.1
+    }[];
+  available: boolean; //true,
+  createdAt: string;
 }

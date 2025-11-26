@@ -194,6 +194,7 @@ export async function endOrder(dataToSend
       orderData: {
         id: dataToSend.orderData.id, // 🟢 رقم الطلب الحالي
         paymentMethod: dataToSend.orderData.paymentMethod || "cash", // 🟢 طريقة الدفع
+        items: dataToSend.orderData.items || [],
       },
       createdBy: dataToSend.createdBy, // 🟢 المستخدم الذي أنهى الطلب
       customerId: dataToSend.customerId, // 🟢 الزبون المرتبط بالطلب
@@ -212,11 +213,7 @@ export async function endOrder(dataToSend
       },
     };
 
-    console.log("📦 Payload المرسل إلى السيرفر:", payload);
-
     const response = await apiClient.post("/api/transaction/end", payload);
-
-    console.log("✅ رد السيرفر:", response.data);
 
     return response.data;
   } catch (err: any) {

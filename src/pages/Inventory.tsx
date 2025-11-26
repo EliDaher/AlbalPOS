@@ -1,29 +1,30 @@
 import { DataTable } from "@/components/dashboard/DataTable";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import AddItemForm from "@/components/Products/AddItemForm";
-import AddProductForm from "@/components/Products/AddItemForm";
 import MakeProduct from "@/components/Products/MakeProduct";
+import { Button } from "@/components/ui/button";
 import getAllInventoryItems from "@/services/inventory";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Inventory() {
   const navigate = useNavigate();
   const [openForm, setOpenForm] = useState(false);
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [row, setRow] = useState<any>(null);
 
-  const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: ["products-table"],
+  const { data: items, isLoading: itemsLoading } = useQuery({
+    queryKey: ["items-table"],
     queryFn: getAllInventoryItems,
   });
 
-  const ProductsColumns = [
+  const ItemsColumns = [
     { key: "id", label: "الرمز", sortable: true, hidden: true },
     { key: "name", label: "الاسم", sortable: true },
-    { key: "unit", label: "الواحدة", sortable: true },
     { key: "quantity", label: "الكمية", sortable: true },
-    { key: "costPerUnit", label: "سعر الواحدة", sortable: true },
+    { key: "unit", label: "الواحدة", sortable: true },
+    { key: "sellPerUnit", label: "سعر الواحدة", sortable: true },
     { key: "lastUpdated", label: "اخر تعديل", sortable: true },
     { key: "category", label: "الصنف", sortable: true },
   ];
@@ -43,16 +44,22 @@ export default function Inventory() {
     });
   };
 
+  useEffect(()=>{
+    if(!openForm){
+      setRow(null);
+    }
+  }, [openForm])
+
   return (
     <DashboardLayout>
       <div>
         <DataTable
           title="قائمة المنتجات"
           titleButton={
-            <AddItemForm isOpen={openForm} setIsOpen={setOpenForm} />
+            <AddItemForm isOpen={openForm} setIsOpen={setOpenForm} row={row} />
           }
-          columns={ProductsColumns}
-          data={products || []}
+          columns={ItemsColumns}
+          data={items || []}
           onRowClick={(row) => toggleRowSelection(row)}
           getRowClassName={(row) =>
             selectedRows?.some((r) => r == row)
@@ -62,11 +69,15 @@ export default function Inventory() {
           renderRowActions={(row) => {
             return (
               <div className="flex gap-1">
-                <AddProductForm
-                  isOpen={openForm}
-                  setIsOpen={setOpenForm}
-                  row={row}
-                />
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenForm(true);
+                    setRow(row);
+                  }}
+                >
+                  شراء المزيد
+                </Button>
                 {/* <Button
                   variant={"outline"}
                   onClick={(e) => {
