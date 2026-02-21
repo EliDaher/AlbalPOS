@@ -9,6 +9,7 @@ import {
   SellInventoryItemData,
   sellInventoryItems,
 } from "@/services/transaction";
+import { toast } from "sonner";
 
 interface SellInventoryItemProps {
   isOpen: boolean;
@@ -70,13 +71,13 @@ export default function SellInventoryItem({
   const sellMutation = useMutation({
     mutationFn: (data: SellInventoryItemData) => sellInventoryItems(data),
     onSuccess: () => {
-      alert("تم اتمام عملية البيع بنجاح");
+      toast.success("تم اتمام عملية البيع بنجاح");
       queryClient.invalidateQueries({ queryKey: ["inventory-items"] });
       setIsOpen(false);
     },
     onError: (error: any) => {
       console.error(error);
-      alert(error?.message || "حدث خطأ أثناء عملية البيع");
+      toast.error(error?.message || "حدث خطأ أثناء عملية البيع");
     },
   });
 
@@ -84,12 +85,12 @@ export default function SellInventoryItem({
     e.preventDefault();
 
     if (selectedItems.length === 0) {
-      alert("يرجى اختيار العناصر للبيع");
+      toast.error("يرجى اختيار العناصر للبيع");
       return;
     }
 
     if (isDebt === "part" && (!partValue || Number(partValue) <= 0)) {
-      alert("يرجى إدخال قيمة الدفعة الجزئية الصحيحة");
+      toast.error("يرجى إدخال قيمة الدفعة الجزئية الصحيحة");
       return;
     }
 

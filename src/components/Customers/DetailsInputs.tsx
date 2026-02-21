@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function DetailsInputs({ customer, setCustomer }) {
   const [originalCustomer, setOriginalCustomer] = useState(customer);
@@ -16,10 +17,10 @@ export default function DetailsInputs({ customer, setCustomer }) {
     try {
       setOriginalCustomer(customer);
       setIsChanged(false);
-      alert("تم حفظ التعديلات!");
+      toast.success("تم حفظ التعديلات!");
     } catch (error) {
       console.log(error)
-      alert("حدث خطأ أثناء حفظ التعديلات");
+      toast.error("حدث خطأ أثناء حفظ التعديلات");
     }
   };
 

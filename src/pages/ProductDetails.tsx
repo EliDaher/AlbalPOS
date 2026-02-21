@@ -1,7 +1,12 @@
+import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import React from 'react'
 
-export default function ProductDetails() {
+const ProductDetails = () => {
   return (
-    <div>ProductDetails</div>
+    <DashboardLayout>
+      <div>ProductDetails</div>
+    </DashboardLayout>
   )
 }
+
+export default ProductDetails

@@ -58,8 +58,8 @@ export default function TopTable({
               style={{ width: "96px", height: `${tableHeight}px` }}
             >
               {/* رقم الطاولة */}
-              <span className="absolute text-sm font-semibold text-gray-800">
-                {tableNumber}
+              <span className="absolute text-2xl font-bold text-gray-800">
+                {tableName || `#${tableNumber}`}
               </span>
 
               {/* الكراسي اليسار */}

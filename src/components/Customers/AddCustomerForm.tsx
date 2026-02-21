@@ -5,6 +5,7 @@ import FormInput from "../ui/custom/FormInput";
 import getAllCustomer, { addCustomer } from "@/services/customers";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "../dashboard/DataTable";
+import { toast } from "sonner";
 
 export default function CustomerSelect({
   isOpen,
@@ -41,7 +42,7 @@ export default function CustomerSelect({
     },
     onError: (error) => {
       console.error(error);
-      alert("حدث خطأ أثناء إضافة الزبون");
+      toast.error("حدث خطأ أثناء إضافة الزبون");
     },
   });
 
@@ -91,7 +92,7 @@ export default function CustomerSelect({
           onClick={(e) => {
             e.preventDefault();
             if (!customerName || !customerNumber) {
-              alert("يرجى ملء جميع الحقول");
+              toast.error("يرجى ملء جميع الحقول");
               return;
             } else {
               addCustomerMutation.mutate({

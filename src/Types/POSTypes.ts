@@ -25,7 +25,6 @@ export interface InventoryItem {
   category: string; //"لحوم"
   unit: string; // "kg",
   quantity: number; // 10,
-  minQuantity: number; // 2,
   costPerUnit: number; // 20000,
   sellPerUnit: number;
   lastUpdated: string;

@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { buyFromSupplier } from "@/services/transaction";
 import SupplierSelect from "./SupplierSelect";
 import { InventoryItem, InventoryLog, invoiceData } from "@/Types/POSTypes";
+import { toast } from "sonner";
 
 export default function AddItemForm({
   isOpen,
@@ -20,14 +21,12 @@ export default function AddItemForm({
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [unit, setUnit] = useState("");
-  const [quantity, setQuantity] = useState("0");
-  const [minQuantity, setMinQuantity] = useState(0);
-  const [costPerUnit, setCostPerUnit] = useState(0);
-  const [sellPerUnit, setSellPerUnit] = useState(0);
+  const [quantity, setQuantity] = useState("");
+  const [costPerUnit, setCostPerUnit] = useState("");
+  const [sellPerUnit, setSellPerUnit] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [isDebt, setIsDebt] = useState<"cash" | "debt" | "part">("cash");
-  const [partValue, setPartValue] = useState("0");
-  const [notes, setNotes] = useState("");
+  const [partValue, setPartValue] = useState("");
 
   // ⚠️ Validation state
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -40,10 +39,8 @@ export default function AddItemForm({
       setName(row.name || "");
       setCategory(row.category || "");
       setUnit(row.unit || "");
-      setMinQuantity(row.minQuantity || 0);
       setCostPerUnit(row.costPerUnit || 0);
       setSellPerUnit(row.sellPerUnit || 0);
-      setNotes(row.notes || "");
     }
   }, [row, isOpen]);
 
@@ -54,12 +51,10 @@ export default function AddItemForm({
       setCategory("");
       setUnit("");
       setQuantity("0");
-      setMinQuantity(0);
-      setCostPerUnit(0);
-      setSellPerUnit(0);
+      setCostPerUnit("0");
+      setSellPerUnit("0");
       setSupplierId("");
       setPartValue("0");
-      setNotes("");
       setIsDebt("cash");
       setErrors({});
     }
@@ -74,13 +69,13 @@ export default function AddItemForm({
       invoiceData: invoiceData;
     }) => buyFromSupplier(dataToSend),
     onSuccess: () => {
-      alert("✅ تم شراء المنتج وتسجيل العملية بنجاح!");
+      toast.success(" تم شراء المنتج وتسجيل العملية بنجاح!");
       setIsOpen(false);
       queryClient.invalidateQueries({ queryKey: ["items-table"] });
     },
     onError: (error) => {
       console.error(error);
-      alert("❌ حدث خطأ أثناء معالجة العملية");
+      toast.error("حدث خطأ أثناء معالجة العملية");
     },
   });
 
@@ -94,25 +89,25 @@ export default function AddItemForm({
     if (!unit) newErrors.unit = "⚠️ الرجاء إدخال الوحدة";
     if (Number(quantity) <= 0)
       newErrors.quantity = "⚠️ الكمية يجب أن تكون أكبر من صفر";
-    if (costPerUnit <= 0)
+    if (Number(costPerUnit) <= 0)
       newErrors.costPerUnit = "⚠️ سعر الشراء يجب أن يكون أكبر من صفر";
-    if (sellPerUnit <= 0)
+    if (Number(sellPerUnit) <= 0)
       newErrors.sellPerUnit = "⚠️ سعر البيع يجب أن يكون أكبر من صفر";
     if (!supplierId) newErrors.supplierId = "⚠️ الرجاء اختيار المورد";
 
     if (isDebt === "part") {
       if (Number(partValue) <= 0)
         newErrors.partValue = "⚠️ الدفعة الجزئية يجب أن تكون أكبر من صفر";
-      const totalAmount = Number(quantity) * costPerUnit;
+      const totalAmount = Number(quantity) * Number(costPerUnit);
       if (Number(partValue) >= totalAmount)
         newErrors.partValue =
           "⚠️ الدفعة الجزئية يجب أن تكون أقل من المجموع الكلي";
     }
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) alert(JSON.stringify(newErrors));
+    if (Object.keys(newErrors).length > 0) toast.error(JSON.stringify(newErrors));
     if (Object.keys(newErrors).length > 0) return;
 
-    const totalAmount = Number(quantity) * costPerUnit;
+    const totalAmount = Number(quantity) * Number(costPerUnit);
     let paidAmount = 0;
     let status: "unpaid" | "partial" | "paid" = "unpaid";
 
@@ -129,9 +124,8 @@ export default function AddItemForm({
       category,
       unit,
       quantity: Number(quantity),
-      minQuantity,
-      costPerUnit,
-      sellPerUnit,
+      costPerUnit: Number(costPerUnit),
+      sellPerUnit: Number(sellPerUnit),
       lastUpdated: new Date().toISOString(),
     };
 
@@ -148,7 +142,7 @@ export default function AddItemForm({
       items: [
         {
           quantity: Number(quantity),
-          cost: costPerUnit,
+          cost: Number(costPerUnit),
         },
       ],
       subTotal: totalAmount,
@@ -160,8 +154,8 @@ export default function AddItemForm({
       paymentMethod:
         isDebt === "cash" ? "cash" : isDebt === "part" ? "part" : "debt",
       dueDate: new Date().toISOString(),
-      notes,
       createdBy: "system",
+      notes: "",
     };
 
     buyMutation.mutate({ supplierId, itemData, logData, invoiceData: invoice });
@@ -209,7 +203,7 @@ export default function AddItemForm({
           label="سعر الشراء للواحدة"
           type="number"
           value={costPerUnit}
-          onChange={(e) => setCostPerUnit(Number(e.target.value))}
+          onChange={(e) => setCostPerUnit(e.target.value)}
           error={errors.costPerUnit}
         />
         <FormInput
@@ -217,15 +211,8 @@ export default function AddItemForm({
           label="سعر البيع للواحدة"
           type="number"
           value={sellPerUnit}
-          onChange={(e) => setSellPerUnit(Number(e.target.value))}
+          onChange={(e) => setSellPerUnit(e.target.value)}
           error={errors.sellPerUnit}
-        />
-        <FormInput
-          id="invMinQuantity"
-          label="الحد الأدنى للكمية"
-          type="number"
-          value={minQuantity}
-          onChange={(e) => setMinQuantity(Number(e.target.value))}
         />
 
         <SupplierSelect
@@ -272,13 +259,6 @@ export default function AddItemForm({
             error={errors.partValue}
           />
         )}
-
-        <FormInput
-          id="notes"
-          label="ملاحظات"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
 
         <Button
           className="col-span-2 mt-3"

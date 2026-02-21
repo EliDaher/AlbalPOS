@@ -132,7 +132,7 @@ const OrderSelect: React.FC<ItemTableProps> = ({
   }, [total]);
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
+    <div className="">
       <h3 className="text-lg font-bold mb-2">اختيار المنتجات</h3>
 
       <Input
@@ -167,7 +167,7 @@ const OrderSelect: React.FC<ItemTableProps> = ({
       {/* جدول المنتجات المختارة */}
       {selectedProducts.length > 0 && (
         <div>
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className="border p-1">المنتج</th>
@@ -179,9 +179,9 @@ const OrderSelect: React.FC<ItemTableProps> = ({
             </thead>
             <tbody>
               {selectedProducts.map((p) => (
-                <tr key={p.productId}>
+                <tr className="" key={p.productId}>
                   <td className="border p-1">{p.productName}</td>
-                  <td className="border p-1">${p.total.toFixed(2)}</td>
+                  <td className="border p-1">${p.total.toFixed(0)}</td>
                   <td className="border p-1">
                     <Input
                       type="number"
@@ -194,7 +194,7 @@ const OrderSelect: React.FC<ItemTableProps> = ({
                     />
                   </td>
                   <td className="border p-1">
-                    ${(p.total * p.quantity).toFixed(2)}
+                    ${(p.total * p.quantity).toFixed(0)}
                   </td>
                   <td className="border p-1 text-center">
                     <Button
@@ -212,7 +212,7 @@ const OrderSelect: React.FC<ItemTableProps> = ({
                   الإجمالي
                 </td>
                 <td colSpan={2} className="border p-1 font-bold">
-                  ${total.toFixed(2)}
+                  ${total.toFixed(0)}
                 </td>
               </tr>
             </tbody>
@@ -230,22 +230,22 @@ const OrderSelect: React.FC<ItemTableProps> = ({
             </thead>
             <tbody>
               {selectedItems?.map((p) => (
-                <tr key={p.itemId}>
-                  <td className="border p-1">{p.itemName}</td>
-                  <td className="border p-1">${(inventoryItems.find(item => item.id === p.itemId)?.sellPerUnit).toFixed(0)}</td>
+                <tr key={p?.itemId}>
+                  <td className="border p-1">{p?.itemName}</td>
+                  <td className="border p-1">${(inventoryItems?.find(item => item?.id === p?.itemId)?.sellPerUnit).toFixed(0)}</td>
                   <td className="border p-1">
                     <Input
                       type="number"
                       min={1}
-                      value={p.quantity}
+                      value={p?.quantity}
                       onChange={(e) =>
-                        updateQty(p.itemId, Number(e.target.value))
+                        updateQty(p?.itemId, Number(e.target.value))
                       }
                       className="w-20"
                     />
                   </td>
                   <td className="border p-1">
-                    ${(inventoryItems.find(item => item.id === p.itemId)?.sellPerUnit * p.quantity).toFixed(0)}
+                    ${(inventoryItems?.find(item => item?.id === p?.itemId)?.sellPerUnit * p?.quantity).toFixed(0)}
                   </td>
                   {/*
                     <td className="border p-1 text-center">

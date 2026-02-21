@@ -23,6 +23,7 @@ import { endOrder } from "@/services/transaction";
 import CustomerSelect from "@/components/Customers/AddCustomerForm";
 import { getAllProducts } from "@/services/products";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function TableDetails() {
   const queryClient = useQueryClient();
@@ -79,20 +80,20 @@ export default function TableDetails() {
   const createOrderMutation = useMutation({
     mutationFn: (orderData: Order) => createOrder({ orderData }),
     onSuccess: () => {
-      alert("✅ تمت إضافة الطلب بنجاح!");
+      toast.success("تمت إضافة الطلب بنجاح!");
       resetForm();
       queryClient.invalidateQueries({ queryKey: ["tables-table"] });
     },
     onError: (err) => {
-      console.error("❌ خطأ أثناء إنشاء الطلب:", err);
-      alert("حدث خطأ أثناء إنشاء الطلب.");
+      console.error("خطأ أثناء إنشاء الطلب:", err);
+      toast.error("حدث خطأ أثناء إنشاء الطلب.");
     },
   });
 
   const endOrderMutation = useMutation<void, any, any>({
     mutationFn: (dataToSend: any) => endOrder(dataToSend),
     onSuccess: () => {
-      alert("✅ تم إنهاء الطلب بنجاح!");
+      toast.success("تم إنهاء الطلب بنجاح!");
       resetForm();
       
       queryClient.invalidateQueries({ queryKey: ["tables-table"] });
@@ -102,7 +103,7 @@ export default function TableDetails() {
     },
     onError: (err: any) => {
       console.error("❌ خطأ أثناء إنهاء الطلب:", err);
-      alert(err.message || "حدث خطأ أثناء إنهاء الطلب.");
+      toast.error(err.message || "حدث خطأ أثناء إنهاء الطلب.");
     },
   });
 
@@ -111,12 +112,12 @@ export default function TableDetails() {
     e.preventDefault();
 
     if (!tableData.currentOrderId) {
-      alert("⚠️ لا يوجد طلب مفتوح لهذه الطاولة.");
+      toast.error("لا يوجد طلب مفتوح لهذه الطاولة.");
       return;
     }
 
     if (paymentMethod === "part" && partValue <= 0) {
-      alert("⚠️ أدخل قيمة الدفعة الجزئية.");
+      toast.error("أدخل قيمة الدفعة الجزئية.");
       return;
     }
 
@@ -171,20 +172,20 @@ export default function TableDetails() {
     mutationFn: ({ id, updates }: { id: string; updates: any }) =>
       updateOrder({ id, updates }),
     onSuccess: () => {
-      alert("✅ تم حفظ التعديلات بنجاح!");
+      toast.success("تم حفظ التعديلات بنجاح!");
       queryClient.invalidateQueries({
         queryKey: ["orderDetails", tableData.currentOrderId],
       });
     },
     onError: (err) => {
       console.error("❌ خطأ أثناء التعديل:", err);
-      alert("حدث خطأ أثناء حفظ التعديلات.");
+      toast.error("حدث خطأ أثناء حفظ التعديلات.");
     },
   });
 
   const handleCreateOrder = async () => {
     if (selectedItems.length === 0) {
-      alert("⚠️ الرجاء اختيار منتج واحد على الأقل قبل إنشاء الطلب.");
+      toast.error("الرجاء اختيار منتج واحد على الأقل قبل إنشاء الطلب.");
       return;
     }
 
@@ -213,7 +214,7 @@ export default function TableDetails() {
 
   const handleUpdateOrder = async () => {
     if (selectedItems.length === 0) {
-      alert("⚠️ الرجاء اختيار منتج واحد على الأقل قبل تعديل الطلب.");
+      toast.error("الرجاء اختيار منتج واحد على الأقل قبل تعديل الطلب.");
       return;
     }
 
@@ -265,8 +266,6 @@ export default function TableDetails() {
             <CardTitle>الطاولة: {tableData?.name}</CardTitle>
             <CardDescription>الحالة: {tableData?.status}</CardDescription>
           </CardHeader>
-
-          <CardContent className="space-y-5">
             {/* اختيار المنتجات */}
             <OrderSelect
               setAmount={setAmount}
@@ -278,6 +277,8 @@ export default function TableDetails() {
               selectedProducts={selectedProducts}
               setSelectedProducts={setSelectedProducts}
             />
+
+          <CardContent className="space-y-4">
 
             {JSON.stringify(orderDetails?.items) !==
               JSON.stringify(selectedItems) &&

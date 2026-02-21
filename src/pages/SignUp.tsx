@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -11,7 +12,7 @@ export default function SignUp() {
 
   const handleSignUp = async () => {
     // حفظ البيانات في قاعدة بيانات أو API
-    alert("Account created!");
+    toast.success("Account created!");
     navigate("/login");
   };
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import userLogin from "@/services/auth";
+import { toast } from "sonner";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -19,11 +20,12 @@ export default function Login() {
     if (res?.message.includes('بنجاح')) {
       console.log(res.user)
       localStorage.setItem("InventoryUser", JSON.stringify(res.user));
+      toast.success("تم تسجيل الدخول بنجاح!");
       navigate("/dashboard");
 
     } else {
       console.log(res)
-      alert(res?.error || "فشل تسجيل الدخول");
+      toast.error(res?.error || "فشل تسجيل الدخول");
     }
   };
 

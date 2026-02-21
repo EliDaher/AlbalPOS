@@ -20,6 +20,7 @@ import Skeleton from "@mui/material/Skeleton";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Payment } from "@/Types/POSTypes";
 import { inventoryUser } from "@/components/layout/Header";
+import { toast } from "sonner";
 
 export default function SupplierDetails() {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ export default function SupplierDetails() {
       type?: "in" | "out";
     }) => paySupplierDebt(payload),
     onSuccess: () => {
-      alert("تمت إضافة الدفعة بنجاح!");
+      toast.success("تمت إضافة الدفعة بنجاح!");
       setAmount("");
       setNote("");
       setIsOpenPayment(false);
@@ -70,14 +71,14 @@ export default function SupplierDetails() {
     },
     onError: (err) => {
       console.error(err);
-      alert("حدث خطأ أثناء الدفع");
+      toast.error("حدث خطأ أثناء الدفع");
     },
   });
 
   const returnMutation = useMutation({
     mutationFn: (payload: any) => (payload),
     onSuccess: () => {
-      alert("تم الإرجاع بنجاح!");
+      toast.success("تم الإرجاع بنجاح!");
       setReturnAmount(0);
       setIsOpenReturn(false);
       queryClient.invalidateQueries({
@@ -86,7 +87,7 @@ export default function SupplierDetails() {
     },
     onError: (err) => {
       console.error(err);
-      alert("حدث خطأ أثناء الإرجاع");
+      toast.error("حدث خطأ أثناء الإرجاع");
     },
   });
 

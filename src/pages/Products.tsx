@@ -17,7 +17,6 @@ export default function Products() {
   // Form Inputs
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
-  const [prepTime, setPrepTime] = useState<number | "">("");
   const [price, setPrice] = useState<number | "">("");
   const [available, setAvailable] = useState(true);
   const [search, setSearch] = useState("");
@@ -47,7 +46,6 @@ export default function Products() {
       // Reset fields
       setName("");
       setCategory("");
-      setPrepTime("");
       setPrice("");
       setIngredients([]);
       setAvailable(true);
@@ -130,7 +128,7 @@ export default function Products() {
       category,
       cost: Number(costPrice),
       price: Number(price),
-      prepTime: Number(prepTime) || 0,
+      prepTime: 1,
       timesSold: 0,
       ingredients,
       available,
@@ -173,13 +171,10 @@ export default function Products() {
           />
 
           <FormInput
-            label="وقت التحضير (دقائق)"
+            label="التكلفة (تحسب تلقائيا)"
             type="number"
-            value={prepTime}
-            onChange={(e) => setPrepTime(Number(e.target.value))}
+            value={costPrice}
           />
-
-          <FormInput label="التكلفة" type="number" value={costPrice} />
 
           <FormInput
             label="سعر المبيع"
@@ -237,10 +232,7 @@ export default function Products() {
               key={i}
               className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 items-end"
             >
-              <FormInput
-                label="اسم المادة"
-                value={ing.itemName}
-              />
+              <FormInput label="اسم المادة" value={ing.itemName} />
               <div className="flex items-center gap-2">
                 <FormInput
                   label="الكمية"
@@ -253,7 +245,11 @@ export default function Products() {
                 <FormInput
                   label="مبيع الواحدة"
                   type="number"
-                  value={ing.itemId ? items?.find((it) => it.id === ing.itemId)?.sellPerUnit : 0}
+                  value={
+                    ing.itemId
+                      ? items?.find((it) => it.id === ing.itemId)?.sellPerUnit
+                      : 0
+                  }
                 />
 
                 {/* Delete Ingredient */}

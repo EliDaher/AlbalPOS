@@ -5,6 +5,7 @@ import FormInput from "../ui/custom/FormInput";
 import getAllSupplier, { addSupplier } from "@/services/supplier";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "../dashboard/DataTable";
+import { toast } from "sonner";
 
 type SupplierSelectProps = {
   isOpen: boolean;
@@ -42,7 +43,7 @@ export default function SupplierSelect({
     },
     onError: (error) => {
       console.error(error);
-      alert("حدث خطأ أثناء إضافة المورد");
+      toast.error("حدث خطأ أثناء إضافة المورد");
     },
   });
 
@@ -109,7 +110,7 @@ export default function SupplierSelect({
         <Button type="submit" onClick={(e)=>{
           e.preventDefault();
           if (!supplierName || !supplierNumber) {
-            alert("يرجى ملء جميع الحقول");
+            toast.error("يرجى ملء جميع الحقول");
             return;
           }
           addSupplierMutation.mutate({

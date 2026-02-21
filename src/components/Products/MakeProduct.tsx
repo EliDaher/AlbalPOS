@@ -15,6 +15,7 @@ import { Badge } from "../ui/badge";
 import PopupForm from "../ui/custom/PopupForm";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { decriseItemQuantity } from "@/services/transaction";
+import { toast } from "sonner";
 
 type InventoryUser = { username: string; [key: string]: any };
 
@@ -68,13 +69,13 @@ export default function MakeProduct({
     mutationFn: (updates: { id: string; quantity: number }[]) =>
       decriseItemQuantity(updates),
     onSuccess: () => {
-      alert("تم انقاص الكميات من المخزون بنجاح.");
+      toast.success("تم انقاص الكميات من المخزون بنجاح.");
       setSelectedRows([]);
       queryClient.invalidateQueries({ queryKey: ["products-table"] });
     },
     onError: (error) => {
       console.error(error);
-      alert("حدث خطأ أثناء انقاص الكميات من المخزون.");
+      toast.error("حدث خطأ أثناء انقاص الكميات من المخزون.");
     },
   });
 
@@ -161,7 +162,7 @@ export default function MakeProduct({
               e.stopPropagation();
               selectedRows.map(item=>{
                 if(!item.needQty || item.needQty<=0){
-                  alert(`الرجاء تحديد كمية صحيحة للمنتج: ${item.name}`);
+                  toast.error(`الرجاء تحديد كمية صحيحة للمنتج: ${item.name}`);
                   throw new Error("Invalid quantity");
                 }else{
                   setIsOpen(true);

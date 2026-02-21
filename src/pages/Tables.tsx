@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { inventoryUser } from "@/components/layout/Header";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function Tables() {
   const [inventoryUser, setInventoryUser] = useState<inventoryUser>();
@@ -38,7 +39,7 @@ export default function Tables() {
     capacity: 1,
   });
   const [note, setNote] = useState("");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table"); // ✅ الوضع الافتراضي جدول
+  const [viewMode, setViewMode] = useState<"table" | "grid">("grid"); 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -55,11 +56,11 @@ export default function Tables() {
     mutationFn: (table: Table) => createTables({ table }),
     onSuccess: () => {
       setFormData({ name: "", location: "", capacity: 1 });
-      alert("تمت العملية بنجاح");
+      toast.success("تمت العملية بنجاح");
       setIsOpen(false);
       queryClient.invalidateQueries({ queryKey: ["tables-table"] });
     },
-    onError: () => alert("حدث خطأ أثناء إضافة الطاولة"),
+    onError: () => toast.error("حدث خطأ أثناء إضافة الطاولة"),
   });
 
   const updateTableMutation = useMutation({
@@ -70,17 +71,17 @@ export default function Tables() {
       user: string;
     }) => updateTableState(dataToSend),
     onSuccess: () => {
-      alert("تم تعديل حالة الطاولة بنجاح");
+      toast.success("تم تعديل حالة الطاولة بنجاح");
       setActiveTable(null);
       queryClient.invalidateQueries({ queryKey: ["tables-table"] });
     },
-    onError: () => alert("حدث خطأ أثناء تعديل حالة الطاولة"),
+    onError: () => toast.error("حدث خطأ أثناء تعديل حالة الطاولة"),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const { name, location, capacity } = formData;
-    if (!name.trim()) return alert("يرجى إدخال اسم الطاولة");
+    if (!name.trim()) return toast.error("يرجى إدخال اسم الطاولة");
     addTableMutation.mutate({
       name,
       location,
@@ -96,30 +97,13 @@ export default function Tables() {
         <div className="flex justify-between items-center flex-wrap gap-3">
           <h1 className="text-2xl font-bold text-gray-800">إدارة الطاولات</h1>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              onClick={() => setViewMode("table")}
-              className="flex items-center gap-2"
-            >
-              <TableIcon className="w-4 h-4" />
-              عرض كجدول
-            </Button>
-            <Button
-              variant={viewMode === "grid" ? "default" : "outline"}
-              onClick={() => setViewMode("grid")}
-              className="flex items-center gap-2"
-            >
-              <LayoutGrid className="w-4 h-4" />
-              عرض كبطاقات
-            </Button>
-
+          <div className="flex flex-wrap items-center gap-4">
             <PopupForm
               title="إضافة طاولة جديدة"
               isOpen={isOpen}
               setIsOpen={setIsOpen}
               trigger={
-                <Button className="flex items-center gap-2">
+                <Button variant="accent" className="flex items-center gap-2">
                   <PlusCircle className="w-4 h-4" />
                   إضافة طاولة
                 </Button>
@@ -167,6 +151,22 @@ export default function Tables() {
                 </Button>
               </form>
             </PopupForm>
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
+              onClick={() => setViewMode("grid")}
+              className="flex items-center gap-2"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              عرض كبطاقات
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "outline"}
+              onClick={() => setViewMode("table")}
+              className="flex items-center gap-2"
+            >
+              <TableIcon className="w-4 h-4" />
+              عرض كجدول
+            </Button>
           </div>
         </div>
 
@@ -189,9 +189,9 @@ export default function Tables() {
             {tables.map((t: Table) => (
               <div key={t.id} className="flex flex-col">
                 <div
-                  onClick={() => {
-                    setActiveTable(t);
-                    setState(t.status);
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/tableDetails/${t.id}`, { state: t });
                   }}
                 >
                   <TopTable
@@ -233,7 +233,11 @@ export default function Tables() {
                   <tr
                     key={t.id}
                     className="border-t hover:bg-gray-50 transition cursor-pointer"
-                    onClick={() => setActiveTable(t)}
+                    // onDoubleClick={() => setActiveTable(t)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/tableDetails/${t.id}`, { state: t });
+                    }}
                   >
                     <td className="p-3">{t.name}</td>
                     <td className="p-3">{t.location || "-"}</td>
