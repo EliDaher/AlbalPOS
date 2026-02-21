@@ -123,6 +123,7 @@ export default function AddItemForm({
       name,
       category,
       unit,
+      minQuantity: 0,
       quantity: Number(quantity),
       costPerUnit: Number(costPerUnit),
       sellPerUnit: Number(sellPerUnit),
