@@ -44,11 +44,11 @@ export default function Inventory() {
     });
   };
 
-  useEffect(()=>{
-    if(!openForm){
+  useEffect(() => {
+    if (!openForm) {
       setRow(null);
     }
-  }, [openForm])
+  }, [openForm]);
 
   return (
     <DashboardLayout>
@@ -69,7 +69,19 @@ export default function Inventory() {
           renderRowActions={(row) => {
             return (
               <div className="flex gap-1">
-                <Button 
+                <Button
+                  variant={"outline"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    console.log(row);
+                    navigate("/productDetails", {
+                      state: { ...row },
+                    });
+                  }}
+                >
+                  التفاصيل
+                </Button>
+                <Button
                   onClick={(e) => {
                     e.stopPropagation();
                     setOpenForm(true);
@@ -78,17 +90,6 @@ export default function Inventory() {
                 >
                   شراء المزيد
                 </Button>
-                {/* <Button
-                  variant={"outline"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate("/productDetails", {
-                      state: row,
-                    });
-                  }}
-                >
-                  التفاصيل
-                </Button> */}
               </div>
             );
           }}

@@ -81,7 +81,7 @@ export default function Products() {
       return [...prev, { itemId, itemName, quantity: Number(quantity) || 0 }];
     });
 
-    setSearch(""); 
+    setSearch("");
   };
 
   const filteredItem = useMemo(
@@ -97,7 +97,7 @@ export default function Products() {
       return total + ing.quantity * item.costPerUnit; // أو costPerUnit لديك
     }, 0);
   }, [ingredients, items]);
-  
+
   const sellPrice = useMemo(() => {
     return ingredients.reduce((total, ing) => {
       const item: InventoryItem = items?.find((i) => i.id === ing.itemId);
