@@ -1,0 +1,1 @@
+import{j as t,B as e}from"./index-CO7Xu4K1.js";function s(){return t.jsxs("div",{className:"text-center mt-10 text-red-600 text-xl flex flex-col items-center justify-center",children:["🚫 ليس لديك صلاحية الوصول لهذه الصفحة.",t.jsx(e,{className:"w-[40%] mt-4",variant:"destructive",onClick:()=>window.history.back(),children:"Go Back"})]})}export{s as default};
