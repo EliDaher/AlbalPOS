@@ -52,3 +52,20 @@ export async function deleteProduct(id: string) {
     throw err;
   }
 }
+
+export async function uploadImage(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const res = await apiClient.post("/api/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  if (!res.data?.success) {
+    throw new Error(res.data?.message || "فشل رفع الصورة");
+  }
+
+  return res.data.imageUrl;
+}

@@ -10,8 +10,10 @@ import { InventoryItem, Product } from "@/Types/POSTypes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Products() {
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false);
 
   // Form Inputs
@@ -282,6 +284,23 @@ export default function Products() {
           }
           data={products || []}
           columns={ProductsColumns}
+          renderRowActions={(row) => {
+            return (
+              <div className="flex gap-1">
+                <Button
+                  variant={"outline"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate("/productDetails", {
+                      state: { ...row },
+                    });
+                  }}
+                >
+                  التفاصيل
+                </Button>
+              </div>
+            );
+          }}
         />
       </div>
     </DashboardLayout>

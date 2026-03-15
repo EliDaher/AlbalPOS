@@ -22,12 +22,17 @@ const NotFound = () => {
           </div>
 
           <div className="space-y-3">
-            <Button asChild className="w-full">
-              <Link to={['admin', 'dealer'].includes('admin') ? `/dashboard` : '/invoices'}>
-                <Home className="mr-2 h-4 w-4" />
-                {['admin', 'dealer'].includes('admin') ? 'Go to Dashboard' : 'Go to Invoices'}
-              </Link>
-            </Button>
+            <Link
+              to={
+                "/dashboard"
+              }
+              className="block"
+            >
+              <Button className="w-full">
+                <Home className="h-4 w-4" />
+                {"Go to Dashboard"}
+              </Button>
+            </Link>
             <Button variant="outline" onClick={() => window.history.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back

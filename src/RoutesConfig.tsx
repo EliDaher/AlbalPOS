@@ -2,6 +2,7 @@ import React from "react";
 import { PrivateRoute } from "@/components/auth/PrivateRoute";
 import SupplierDetails from "./pages/SupplierDetails";
 import TableDetails from "./pages/TableDetails";
+import InventoryDetails from "./pages/InventoryItemDetails";
 
 // Lazy Loading للصفحات
 const Products = React.lazy(() => import("@/pages/Products"));
@@ -38,6 +39,7 @@ export const routesConfig = [
     ),
   },
   { path: "/productDetails", element: <ProductDetails /> },
+  { path: "/inventoryDetails", element: <InventoryDetails /> },
   { path: "/SupplierDetails", element: <SupplierDetails /> },
   { path: "/customerDetails", element: <CustomerDetails /> },
   { path: "/Balance", element: <Balance /> },

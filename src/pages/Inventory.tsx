@@ -74,7 +74,7 @@ export default function Inventory() {
                   onClick={(e) => {
                     e.stopPropagation();
                     console.log(row);
-                    navigate("/productDetails", {
+                    navigate("/inventoryDetails", {
                       state: { ...row },
                     });
                   }}
