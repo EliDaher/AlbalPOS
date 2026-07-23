@@ -1,21 +1,31 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { InventoryItem, OrderItem, OrderProducts, Product } from "@/Types/POSTypes";
+import { Badge } from "@/components/ui/badge";
+import { Minus, Plus, Search, X } from "lucide-react";
+import {
+  InventoryItem,
+  OrderItem,
+  OrderProduct,
+  Product,
+} from "@/Types/POSTypes";
 import getAllInventoryItems from "@/services/inventory";
 import { useQuery } from "@tanstack/react-query";
 import { getAllProducts } from "@/services/products";
-import { DataTable } from "../dashboard/DataTable";
-
+import {
+  deriveOrderItemsFromProducts,
+  formatCurrency,
+  getProductUnitPrice,
+  mergeProductSelection,
+} from "@/lib/pos";
 
 interface ItemTableProps {
   onChange: (selected: OrderItem[]) => void;
-  setAmount: any;
+  setAmount: (amount: number) => void;
   selectedItems: OrderItem[];
   setSelectedItems: React.Dispatch<React.SetStateAction<OrderItem[]>>;
-  selectedProducts: OrderProducts[];
-  setSelectedProducts: React.Dispatch<React.SetStateAction<OrderProducts[]>>;
+  selectedProducts: OrderProduct[];
+  setSelectedProducts: React.Dispatch<React.SetStateAction<OrderProduct[]>>;
 }
 
 const OrderSelect: React.FC<ItemTableProps> = ({
@@ -24,245 +34,196 @@ const OrderSelect: React.FC<ItemTableProps> = ({
   selectedItems,
   setSelectedItems,
   selectedProducts,
-  setSelectedProducts
+  setSelectedProducts,
 }) => {
   const [search, setSearch] = useState("");
 
-  // ✅ جلب جميع المنتجات
-  const { data: inventoryItems, isLoading: itemsLoading } = useQuery<InventoryItem[]>({
+  const { data: inventoryItems = [], isLoading: itemsLoading } = useQuery<InventoryItem[]>({
     queryKey: ["inventoryItems-table"],
     queryFn: getAllInventoryItems,
   });
 
-  const { data: products, isLoading: productsLoading } = useQuery<Product[]>({
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["products-table"],
     queryFn: getAllProducts,
   });
 
-  // البحث عن المنتجات
-  const filteredItem = useMemo(
+  const filteredProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return products
+      .filter((product) => product.available !== false)
+      .filter((product) =>
+        !term
+          ? true
+          : product.name.toLowerCase().includes(term) ||
+            product.category.toLowerCase().includes(term),
+      );
+  }, [products, search]);
+
+  const total = useMemo(
     () =>
-      products?.filter((p) =>
-        p.name.toLowerCase().includes(search.toLowerCase()),
+      selectedProducts.reduce(
+        (sum, product) => sum + getProductUnitPrice(product) * product.quantity,
+        0,
       ),
-    [products, search],
+    [selectedProducts],
   );
 
-  // إضافة منتج
-  const addProduct = (product: Product) => {
-    setSelectedProducts(prev => [...prev, {
-      productId: product.id || "",
-      productName: product.name,
-      quantity: 1,
-      total: product.price,
-    }]);
-    setSelectedItems((prev) => {
-      let updated = [...prev];
-
-      product.ingredients.forEach((ing) => {
-        const inventoryItem = inventoryItems.find(
-          (item) => item.id === ing.itemId,
-        );
-        if (!inventoryItem) return;
-
-        const existsIndex = updated.findIndex(
-          (item) => item.itemId === ing.itemId,
-        );
-
-        if (existsIndex !== -1) {
-          // تحديث الكمية
-          updated[existsIndex] = {
-            ...updated[existsIndex],
-            quantity: updated[existsIndex].quantity + ing.quantity,
-            total:
-              (updated[existsIndex].quantity + ing.quantity) *
-              updated[existsIndex].price,
-          };
-        } else {
-          // إضافة عنصر جديد
-          updated.push({
-            itemId: ing.itemId,
-            itemName: ing.itemName,
-            quantity: ing.quantity,
-            price: inventoryItem.sellPerUnit,
-            total: inventoryItem.sellPerUnit * ing.quantity,
-          });
-        }
-      });
-
-      onChange(updated);
-      return updated;
-    });
-  };
-
-  // تحديث الكمية
-  const updateQty = (id: string, qty: number) => {
-    const newSelected = selectedItems
-      .map((p) => (p.itemId === id ? { ...p, quantity: qty } : p))
-      .filter((p) => p.quantity >= 0);
-    setSelectedItems(newSelected);
-    onChange(newSelected);
-  };
-
-
-  // تحديث الكمية المنتجات  
-  const updateProductQty = (id: string, qty: number) => {
-    const newSelected = selectedProducts
-      .map((p) => (p.productId === id ? { ...p, quantity: qty } : p))
-      .filter((p) => p.quantity >= 0);
-    setSelectedProducts(newSelected);
-  };
-
-  // حذف المنتج
-  const removeProduct = (id: string) => {
-    const newSelected = selectedProducts.filter((p) => p.productId !== id);
-    setSelectedProducts(newSelected);
-  };
-
-  // إجمالي الفاتورة
-  const total = selectedProducts.reduce(
-    (sum, p) =>
-      sum +
-      p.total *
-        p.quantity,
-    0,
-  );
   useEffect(() => {
+    const derivedItems = deriveOrderItemsFromProducts(
+      selectedProducts,
+      products,
+      inventoryItems,
+    );
+    setSelectedItems(derivedItems);
+    onChange(derivedItems);
     setAmount(total);
-  }, [total]);
+  }, [inventoryItems, onChange, products, selectedProducts, setAmount, setSelectedItems, total]);
+
+  const addProduct = (product: Product) => {
+    setSelectedProducts((prev) => mergeProductSelection(prev, product));
+    setSearch("");
+  };
+
+  const updateProductQty = (id: string, qty: number) => {
+    const quantity = Math.max(Number(qty || 0), 0);
+    setSelectedProducts((prev) =>
+      prev
+        .map((product) =>
+          product.productId === id
+            ? {
+                ...product,
+                quantity,
+                total: getProductUnitPrice(product) * quantity,
+              }
+            : product,
+        )
+        .filter((product) => product.quantity > 0),
+    );
+  };
+
+  const removeProduct = (id: string) => {
+    setSelectedProducts((prev) => prev.filter((product) => product.productId !== id));
+  };
 
   return (
-    <div className="">
-      <h3 className="text-lg font-bold mb-2">اختيار المنتجات</h3>
+    <div className="space-y-4">
+      <div>
+        <h3 className="mb-2 text-lg font-bold">اختيار المنتجات</h3>
+        <div className="relative">
+          <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            disabled={itemsLoading || productsLoading}
+            placeholder={
+              itemsLoading || productsLoading
+                ? "جاري تحميل المنتجات..."
+                : "ابحث باسم المنتج أو الصنف..."
+            }
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="pr-9 text-right"
+          />
+        </div>
+      </div>
 
-      <Input
-        disabled={itemsLoading || productsLoading}
-        placeholder={
-          itemsLoading || productsLoading
-            ? "جاري تحميل المنتجات..."
-            : "ابحث عن المنتج بالاسم أو الكود..."
-        }
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="mb-2"
-      />
+      <div className="grid max-h-72 gap-3 overflow-y-auto sm:grid-cols-2">
+        {filteredProducts.slice(0, 12).map((product) => (
+          <button
+            type="button"
+            key={product.id}
+            onClick={() => addProduct(product)}
+            className="rounded-md border bg-card p-3 text-right transition hover:border-primary hover:bg-primary/5"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold">{product.name}</p>
+                <p className="text-xs text-muted-foreground">{product.category}</p>
+              </div>
+              <Badge variant="secondary">{formatCurrency(product.price)}</Badge>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {product.ingredients?.length || 0} مكونات
+            </p>
+          </button>
+        ))}
+      </div>
 
-      {/* قائمة البحث */}
-      {search && filteredItem.length > 0 && (
-        <div className="max-h-40 overflow-y-auto border p-2 rounded mb-4">
-          {filteredItem.map((p) => (
+      {selectedProducts.length > 0 && (
+        <div className="space-y-3 rounded-md border p-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold">سلة الطلب</h4>
+            <span className="text-sm text-muted-foreground">
+              {selectedProducts.length} منتجات
+            </span>
+          </div>
+
+          {selectedProducts.map((product) => (
             <div
-              key={p.id}
-              className="flex justify-between inventoryItems-center p-1 hover:bg-gray-100 cursor-pointer"
-              onClick={() => addProduct(p)}
+              key={product.productId}
+              className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-md bg-muted/40 p-2"
             >
-              <span>
-                {p.name} ({p.category}) - ${p.price}
-              </span>
+              <div>
+                <p className="font-medium">{product.productName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatCurrency(getProductUnitPrice(product))} × {product.quantity}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => updateProductQty(product.productId, product.quantity - 1)}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Input
+                  type="number"
+                  min={1}
+                  value={product.quantity}
+                  onChange={(event) =>
+                    updateProductQty(product.productId, Number(event.target.value))
+                  }
+                  className="h-10 w-16 text-center"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => updateProductQty(product.productId, product.quantity + 1)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => removeProduct(product.productId)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
+
+          <div className="flex items-center justify-between border-t pt-3 text-lg font-bold">
+            <span>الإجمالي</span>
+            <span>{formatCurrency(total)}</span>
+          </div>
         </div>
       )}
 
-      {/* جدول المنتجات المختارة */}
-      {selectedProducts.length > 0 && (
-        <div>
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="border p-1">المنتج</th>
-                <th className="border p-1">السعر</th>
-                <th className="border p-1">الكمية</th>
-                <th className="border p-1">المجموع</th>
-                <th className="border p-1">حذف</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedProducts.map((p) => (
-                <tr className="" key={p.productId}>
-                  <td className="border p-1">{p.productName}</td>
-                  <td className="border p-1">${p.total.toFixed(0)}</td>
-                  <td className="border p-1">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={p.quantity}
-                      onChange={(e) =>
-                        updateProductQty(p.productId, Number(e.target.value))
-                      }
-                      className="w-16"
-                    />
-                  </td>
-                  <td className="border p-1">
-                    ${(p.total * p.quantity).toFixed(0)}
-                  </td>
-                  <td className="border p-1 text-center">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeProduct(p.productId)}
-                    >
-                      <X />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td colSpan={4} className="border p-1 font-bold text-right">
-                  الإجمالي
-                </td>
-                <td colSpan={2} className="border p-1 font-bold">
-                  ${total.toFixed(0)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          
-          <table className="w-full border-collapse mt-6">
-            <thead>
-              <tr>
-                <th className="border p-1">المنتج</th>
-                <th className="border p-1">السعر</th>
-                <th className="border p-1">الكمية</th>
-                <th className="border p-1">المجموع</th>
-                {/* <th className="border p-1">حذف</th> */}
-              </tr>
-            </thead>
-            <tbody>
-              {selectedItems?.map((p) => (
-                <tr key={p?.itemId}>
-                  <td className="border p-1">{p?.itemName}</td>
-                  <td className="border p-1">${(inventoryItems?.find(item => item?.id === p?.itemId)?.sellPerUnit).toFixed(0)}</td>
-                  <td className="border p-1">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={p?.quantity}
-                      onChange={(e) =>
-                        updateQty(p?.itemId, Number(e.target.value))
-                      }
-                      className="w-20"
-                    />
-                  </td>
-                  <td className="border p-1">
-                    ${(inventoryItems?.find(item => item?.id === p?.itemId)?.sellPerUnit * p?.quantity).toFixed(0)}
-                  </td>
-                  {/*
-                    <td className="border p-1 text-center">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeProduct(p.itemId)}
-                      >
-                        <X />
-                      </Button>
-                    </td> 
-                  */}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          
+      {selectedItems.length > 0 && (
+        <div className="rounded-md border p-3">
+          <h4 className="mb-2 font-semibold">المواد التي ستخصم من المخزون</h4>
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            {selectedItems.map((item) => (
+              <div key={item.itemId} className="flex justify-between rounded bg-muted/40 p-2">
+                <span>{item.itemName}</span>
+                <span className="font-medium">{item.quantity}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

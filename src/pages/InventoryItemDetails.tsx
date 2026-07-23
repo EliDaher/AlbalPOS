@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { formatDateTime } from "@/lib/pos";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Loading from "@/components/ui/custom/Loading";
@@ -141,7 +142,7 @@ export default function InventoryDetails() {
       const profit = totalSell - totalCost;
 
       return {
-        name: new Date(sell.date).toLocaleDateString(),
+        name: formatDateTime(sell.date).split("،")[0],
         profit: profit.toFixed(3),
       };
     });
@@ -202,7 +203,7 @@ export default function InventoryDetails() {
                   new Date(value as any).toString() !== "Invalid Date" ? (
                     <input
                       type="text"
-                      value={new Date(value as any).toLocaleString("en-GB")}
+                      value={formatDateTime(value as any)}
                       onChange={(e) => handleChange(key, e.target.value)}
                       className="bg-transparent border-b-2 border-transparent focus:border-primary-500 outline-none transition-all w-full"
                     />

@@ -1,4 +1,4 @@
-import {
+﻿import {
   LineChart,
   Line,
   BarChart,
@@ -17,6 +17,7 @@ import {
   AreaChart,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency, formatNumber } from "@/lib/pos";
 
 interface ChartData {
   name: string;
@@ -66,7 +67,7 @@ export function ChartContainer({
                   axisLine={false}
                 />
 
-                {/* المحور الأيسر للـ total */}
+                {/* Ø§Ù„Ù…Ø­ÙˆØ± Ø§Ù„Ø£ÙŠØ³Ø± Ù„Ù„Ù€ total */}
                 <YAxis
                   yAxisId="left"
                   tick={{ fontSize: 12 }}
@@ -74,7 +75,7 @@ export function ChartContainer({
                   axisLine={false}
                 />
 
-                {/* المحور الأيمن للـ count */}
+                {/* Ø§Ù„Ù…Ø­ÙˆØ± Ø§Ù„Ø£ÙŠÙ…Ù† Ù„Ù„Ù€ count */}
                 <YAxis
                   yAxisId="right"
                   orientation="right"
@@ -91,7 +92,7 @@ export function ChartContainer({
                   }}
                 />
 
-                {/* الخط الأول - total */}
+                {/* Ø§Ù„Ø®Ø· Ø§Ù„Ø£ÙˆÙ„ - total */}
                 <Line
                   yAxisId="left"
                   type="monotone"
@@ -104,7 +105,7 @@ export function ChartContainer({
                   fillOpacity={0.5}
                   />
 
-                {/* الخط الثاني - count */}
+                {/* Ø§Ù„Ø®Ø· Ø§Ù„Ø«Ø§Ù†ÙŠ - count */}
                 <Line
                   yAxisId="right"
                   type="monotone"
@@ -118,13 +119,9 @@ export function ChartContainer({
               </LineChart>
             </ResponsiveContainer>
                 
-           {/* هنا تضيف النص أسفل الرسم */}
+           {/* Ù‡Ù†Ø§ ØªØ¶ÙŠÙ Ø§Ù„Ù†Øµ Ø£Ø³ÙÙ„ Ø§Ù„Ø±Ø³Ù… */}
             <p className="text-foreground/80" style={{ marginTop: "5px", fontWeight: "bold", fontSize: "22px" }}>
-              {Number(desc).toLocaleString("En-SY", {
-                style: "currency",
-                currency: "SYP",
-                minimumFractionDigits: 0,
-              })}
+              {formatCurrency(desc)}
             </p>
           </div>
         );
@@ -215,7 +212,7 @@ export function ChartContainer({
             </PieChart>
           </ResponsiveContainer>
               
-          {/* هنا تضيف النص أسفل الرسم */}
+          {/* Ù‡Ù†Ø§ ØªØ¶ÙŠÙ Ø§Ù„Ù†Øµ Ø£Ø³ÙÙ„ Ø§Ù„Ø±Ø³Ù… */}
           <p className="text-foreground/80" style={{ marginTop: "5px", fontWeight: "bold", fontSize: "22px" }}>
             {desc}
           </p>
@@ -231,12 +228,12 @@ export function ChartContainer({
               const dayEntry: Record<string, any> = { date };
             
               for (const [user, entries] of Object.entries(usersData)) {
-                if (user === "mahal") continue; // تجاهل mahal
+                if (user === "mahal") continue; // ØªØ¬Ø§Ù‡Ù„ mahal
               
                 const totalAmount = Object.values(entries).reduce((sum, entry: any) => {
                   const hasAndre = entry.details?.some((d: any) =>
                     Object.values(d).some((val: any) =>
-                      typeof val === "string" && val.includes("اندريه")
+                      typeof val === "string" && val.includes("Ø§Ù†Ø¯Ø±ÙŠÙ‡")
                     )
                   );
                   return hasAndre ? sum : sum + (entry.amount || 0);
@@ -283,11 +280,11 @@ export function ChartContainer({
                   <p><strong>{label}</strong></p>
                   {payload.map((entry: any, i: number) => (
                     <p key={i} style={{ color: entry.color }}>
-                      {entry.name}: {Number(entry.value).toLocaleString("en-SY")}
+                      {entry.name}: {formatNumber(entry.value, 0)}
                     </p>
                   ))}
                   <hr />
-                  <p><strong>المجموع:</strong> {Number(total).toLocaleString("en-SY")}</p>
+                  <p><strong>Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹:</strong> {formatNumber(total, 0)}</p>
                 </div>
               );
             }
@@ -296,12 +293,12 @@ export function ChartContainer({
             return null;
           };
           const monthlyTotal = stackData.reduce((total, day) => {
-            // مجموع عمليات اليوم (نجمع قيم كل المستخدمين في ذلك اليوم)
+            // Ù…Ø¬Ù…ÙˆØ¹ Ø¹Ù…Ù„ÙŠØ§Øª Ø§Ù„ÙŠÙˆÙ… (Ù†Ø¬Ù…Ø¹ Ù‚ÙŠÙ… ÙƒÙ„ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† ÙÙŠ Ø°Ù„Ùƒ Ø§Ù„ÙŠÙˆÙ…)
             const dayTotal = users.reduce((sum, user) => sum + (day[user] || 0), 0);
             return total + dayTotal;
           }, 0);
         
-          // حساب المتوسط الشهري (المجموع ÷ عدد الأيام)
+          // Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…ØªÙˆØ³Ø· Ø§Ù„Ø´Ù‡Ø±ÙŠ (Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹ Ã· Ø¹Ø¯Ø¯ Ø§Ù„Ø£ÙŠØ§Ù…)
           const averageMonthly = stackData.length ? monthlyTotal / stackData.length : 0;
         
           return (
@@ -331,8 +328,8 @@ export function ChartContainer({
               </BarChart>
             </ResponsiveContainer>
               <div style={{ textAlign: "center", marginTop: "10px", fontWeight: "bold", fontSize: 18 }}>
-                <p>المجموع الشهري: {monthlyTotal.toLocaleString("en-SY")}</p>
-                <p>المتوسط اليومي: {Number(averageMonthly.toFixed(0)).toLocaleString("en-SY")}</p>
+                <p>Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„Ø´Ù‡Ø±ÙŠ: {formatNumber(monthlyTotal, 0)}</p>
+                <p>Ø§Ù„Ù…ØªÙˆØ³Ø· Ø§Ù„ÙŠÙˆÙ…ÙŠ: {formatNumber(averageMonthly, 0)}</p>
               </div>
             </div>
           );
@@ -409,3 +406,4 @@ export function ChartContainer({
     </Card>
   );
 }
+

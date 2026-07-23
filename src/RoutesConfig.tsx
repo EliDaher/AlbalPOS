@@ -19,29 +19,34 @@ const Inventory = React.lazy(() => import("@/pages/Inventory"));
 const Tables = React.lazy(() => import("@/pages/Tables"));
 const Balance = React.lazy(() => import("@/pages/Balance"));
 
+const adminOnly = ["admin"];
+const cashierRoles = ["admin", "dealer"];
+const protect = (element: React.ReactNode, allowedRoles = adminOnly) => (
+  <PrivateRoute allowedRoles={allowedRoles}>{element}</PrivateRoute>
+);
 
 export const routesConfig = [
   { path: "/login", element: <Login /> },
   { path: "/signUp", element: <SignUp /> },
   { path: "/unauthorized", element: <UnauthorizedPage /> },
-  { path: "/Products", element: <Products /> },
-  { path: "/suppliers", element: <Suppliers /> },
-  { path: "/Customers", element: <Customers /> },
-  { path: "/inventory", element: <Inventory /> },
-  { path: "/tables", element: <Tables /> },
-  { path: "/tableDetails/:id", element: <TableDetails /> },
+  { path: "/", element: protect(<Dashboard />, cashierRoles) },
+  { path: "/Products", element: protect(<Products />) },
+  { path: "/products", element: protect(<Products />) },
+  { path: "/suppliers", element: protect(<Suppliers />) },
+  { path: "/Customers", element: protect(<Customers />, cashierRoles) },
+  { path: "/customers", element: protect(<Customers />, cashierRoles) },
+  { path: "/inventory", element: protect(<Inventory />) },
+  { path: "/tables", element: protect(<Tables />, cashierRoles) },
+  { path: "/tableDetails/:id", element: protect(<TableDetails />, cashierRoles) },
   {
     path: "/dashboard",
-    element: (
-      <PrivateRoute allowedRoles={["admin", "dealer"]}>
-        <Dashboard />
-      </PrivateRoute>
-    ),
+    element: protect(<Dashboard />, cashierRoles),
   },
-  { path: "/productDetails", element: <ProductDetails /> },
-  { path: "/inventoryDetails", element: <InventoryDetails /> },
-  { path: "/SupplierDetails", element: <SupplierDetails /> },
-  { path: "/customerDetails", element: <CustomerDetails /> },
-  { path: "/Balance", element: <Balance /> },
+  { path: "/productDetails", element: protect(<ProductDetails />) },
+  { path: "/inventoryDetails", element: protect(<InventoryDetails />) },
+  { path: "/SupplierDetails", element: protect(<SupplierDetails />) },
+  { path: "/customerDetails", element: protect(<CustomerDetails />, cashierRoles) },
+  { path: "/Balance", element: protect(<Balance />) },
+  { path: "/balance", element: protect(<Balance />) },
   { path: "*", element: <NotFound /> },
 ];

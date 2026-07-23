@@ -16,7 +16,8 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <div dir="rtl" lang="ar">
+    <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="light" storageKey="dashboard-theme">
       <TooltipProvider>
         <Toaster richColors position="top-left" duration={2500} />
@@ -33,7 +34,8 @@ const App = () => (
         </HashRouter>
       </TooltipProvider>
     </ThemeProvider>
-  </QueryClientProvider>
+    </QueryClientProvider>
+  </div>
 );
 
 export default App;

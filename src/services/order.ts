@@ -1,4 +1,4 @@
-import { Order } from "@/Types/POSTypes";
+import { CheckoutPayload, Order } from "@/Types/POSTypes";
 import apiClient from "@/lib/axios";
 
 /**
@@ -102,5 +102,21 @@ export async function getOrderById(id: string): Promise<Order> {
     throw new Error(
       err.response?.data?.message || "فشل في جلب بيانات الطلب من الخادم",
     );
+  }
+}
+
+export async function checkoutOrder(dataToSend: CheckoutPayload) {
+  try {
+    const response = await apiClient.post(
+      `/api/orders/${dataToSend.orderData.id}/checkout`,
+      dataToSend,
+    );
+    return response.data;
+  } catch (err: any) {
+    console.error("خطأ في إنهاء الطلب:", err);
+    if (err.response?.data?.message) {
+      throw new Error(err.response.data.message);
+    }
+    throw new Error("تعذر إنهاء الطلب، تحقق من الاتصال بالخادم");
   }
 }

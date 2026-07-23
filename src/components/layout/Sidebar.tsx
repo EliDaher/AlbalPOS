@@ -1,19 +1,38 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  Home,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
-  Package,
-  Users,
-  Table2Icon,
-  TableIcon,
-  Box,
   Coffee,
+  Package,
+  ReceiptText,
+  TableIcon,
+  Users,
+  WalletCards,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/session";
 
 const navigationGroups = [
+  {
+    name: "لوحة التحكم",
+    href: "/dashboard",
+    icon: BarChart3,
+    allowed: ["admin", "dealer"],
+  },
+  {
+    name: "الطاولات",
+    href: "/tables",
+    icon: TableIcon,
+    allowed: ["admin", "dealer"],
+  },
+  {
+    name: "المنتجات",
+    href: "/products",
+    icon: Coffee,
+    allowed: ["admin"],
+  },
   {
     name: "المستودع",
     href: "/inventory",
@@ -21,39 +40,21 @@ const navigationGroups = [
     allowed: ["admin"],
   },
   {
-    name: "المنتجات",
-    href: "/Products",
-    icon: Coffee,
-    allowed: ["admin"],
-  },
-  {
-    name: "الموردين",
-    href: "/Suppliers",
-    icon: Users,
-    allowed: ["admin"],
-  },
-  {
-    name: "الطاولات",
-    href: "/tables",
-    icon: TableIcon,
-    allowed: ["admin"],
-  },
-  // {
-  //   name: "الفواتير",
-  //   href: "/invoices",
-  //   icon: TableIcon,
-  //   allowed: ["admin"],
-  // },
-  {
     name: "الزبائن",
-    href: "/Customers",
+    href: "/customers",
     icon: Users,
+    allowed: ["admin", "dealer"],
+  },
+  {
+    name: "الموردون",
+    href: "/suppliers",
+    icon: ReceiptText,
     allowed: ["admin"],
   },
   {
     name: "الرصيد",
-    href: "/Balance",
-    icon: Box,
+    href: "/balance",
+    icon: WalletCards,
     allowed: ["admin"],
   },
 ];
@@ -65,80 +66,59 @@ interface SidebarProps {
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const location = useLocation();
-  const userStr = localStorage.getItem("InventoryUser");
-  const user = JSON.parse(userStr);
-
-  const isDashboardActive = location.pathname === "/dashboard";
+  const user = getCurrentUser();
 
   return (
-    <div
+    <aside
+      dir="rtl"
       className={cn(
-        "relative flex h-full flex-col border-r bg-sidebar transition-all duration-300 ease-in-out shadow-md",
-        isCollapsed ? "w-16" : "w-64",
+        "relative hidden h-full flex-col border-l bg-sidebar text-sidebar-foreground shadow-sm transition-all duration-300 ease-in-out md:flex",
+        isCollapsed ? "w-20" : "w-64",
       )}
     >
-      {/* Header */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-accent">
+      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         {!isCollapsed && (
-          <div className="flex items-center space-x-2">
-            <span className="font-bold text-lg text-sidebar-foreground tracking-wide">
-              عالبال
-            </span>
+          <div>
+            <p className="text-lg font-bold">عالبال</p>
+            <p className="text-xs text-muted-foreground">نقطة البيع</p>
           </div>
         )}
         <Button
           variant="ghost"
           size="icon"
           onClick={onToggle}
-          className="h-8 w-8 rounded-full text-sidebar-foreground hover:bg-sidebar-accent"
+          className="h-9 w-9 rounded-md text-sidebar-foreground"
+          aria-label={isCollapsed ? "توسيع القائمة" : "طي القائمة"}
         >
-          {isCollapsed ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
+          {isCollapsed ? <ChevronLeft /> : <ChevronRight />}
         </Button>
       </div>
 
-      {/* Dashboard Link */}
-      {['admin', 'dealer'].includes(user.role) && <nav className="px-2 py-3">
-        <Link
-          to="/dashboard"
-          className={cn(
-            "flex items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
-            isDashboardActive
-              ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-          )}
-        >
-          <Home className="h-5 w-5 flex-shrink-0 ml-3" />
-          {!isCollapsed && "الصفحة الرئيسية"}
-        </Link>
-      </nav>}
-
-      {/* Other Navigation Groups */}
-      <nav className="flex-1 px-2 py-2 overflow-y-auto">
-        {navigationGroups.map((group) => {
-          const isActive = location.pathname === group.href;
-          return (
-            group.allowed.includes(user.role) && (
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {navigationGroups
+          .filter((group) => user && group.allowed.includes(user.role))
+          .map((group) => {
+            const isActive =
+              location.pathname.toLowerCase() === group.href.toLowerCase();
+            return (
               <Link
-                key={group.name}
+                key={group.href}
                 to={group.href}
                 className={cn(
-                  "group flex mt-2 items-center rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                  "flex h-11 items-center rounded-md px-3 text-sm font-medium transition-colors",
+                  isCollapsed ? "justify-center" : "gap-3",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "hover:bg-sidebar-accent/70",
                 )}
+                title={isCollapsed ? group.name : undefined}
               >
-                <group.icon className="h-5 w-5 flex-shrink-0 ml-3" />
-                {!isCollapsed && group.name}
+                <group.icon className="h-5 w-5 shrink-0" />
+                {!isCollapsed && <span>{group.name}</span>}
               </Link>
-            )
-          );
-        })}
+            );
+          })}
       </nav>
-    </div>
+    </aside>
   );
 }

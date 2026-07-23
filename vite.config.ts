@@ -15,4 +15,15 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 650,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          charts: ["recharts"],
+          export: ["xlsx", "jspdf", "jspdf-autotable", "file-saver"],
+        },
+      },
+    },
+  },
 }));

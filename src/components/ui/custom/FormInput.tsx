@@ -1,5 +1,6 @@
 import React, { forwardRef } from "react";
 import { Input } from "../input";
+import { cn } from "@/lib/utils";
 
 type FormInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
@@ -12,7 +13,7 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
       <div className="text-right">
         <label
           htmlFor={props.id}
-          className="block mb-1 text-sm font-medium text-gray-700"
+          className="mb-1 block text-sm font-medium text-foreground"
         >
           {label}
         </label>
@@ -20,12 +21,10 @@ const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         <Input
           ref={ref}
           {...props}
-          className={`text-right border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 ${
-            error ? "border-red-500" : ""
-          } ${className || ""}`}
+          className={cn("text-right", error && "border-destructive", className)}
         />
 
-        {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
+        {error && <p className="mt-1 text-sm text-destructive">{error}</p>}
       </div>
     );
   },

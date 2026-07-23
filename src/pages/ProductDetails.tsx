@@ -13,6 +13,7 @@ import { ArrowLeft, Plus, Trash2, Save, Package } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { formatDateTime } from "@/lib/pos";
 
 type Ingredient = {
   itemId: string;
@@ -72,10 +73,7 @@ function normalizeProductResponse(res: any): Product {
 }
 
 function formatDate(date?: string) {
-  if (!date) return "-";
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleString("en-GB");
+  return formatDateTime(date);
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {

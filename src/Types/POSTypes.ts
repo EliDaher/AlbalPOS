@@ -7,6 +7,19 @@ export interface Supplier {
   createdAt?: string; //2025-10-09T10:00:00Z
 }
 
+export interface UserSession {
+  id?: string;
+  username: string;
+  role: "admin" | "dealer" | string;
+  name?: string;
+}
+
+export type TableStatus = "available" | "occupied" | "reserved" | "closed";
+export type PaymentMode = "cash" | "part" | "debt";
+export type InvoiceStatus = "unpaid" | "partial" | "paid";
+export type LedgerDirection = "in" | "out";
+export type StockMovement = "in" | "out" | "adjust";
+
 export interface Payment {
   id?: string;
   invoiceId?: string;
@@ -34,7 +47,7 @@ export interface InventoryItem {
 export interface InventoryLog {
   id?: string; // "log1",
   itemId?: string; // "i1",
-  type: "in" | "out" | "adjust";
+  type: StockMovement;
   quantity: number; // 2,
   reason: string; // "تحضير وجبة شاورما",
   relatedOrderId?: string; // "o12",
@@ -57,7 +70,7 @@ export interface invoiceData {
   total: number; //109000,
   paidAmount: number; //50000,
   remainingAmount: number; //59000,
-  status: "unpaid" | "partial" | "paid";
+  status: InvoiceStatus;
   paymentMethod: string; //bank transfer,
   dueDate: string; //2025-10-20,
   notes: string; //دفعة ثانية بعد أسبوع,
@@ -82,19 +95,22 @@ export interface OrderItem {
   total: number;
 }
 
-export interface OrderProducts {
+export interface OrderProduct {
   productId: string;
   productName: string;
   quantity: number;
+  unitPrice: number;
   total: number;
 }
+
+export type OrderProducts = OrderProduct;
 
 export interface Order {
   id?: string;
   tableId?: string | null;
   type: "dine-in" | "takeaway" | "delivery";
   items: OrderItem[];
-  products: OrderProducts[];
+  products: OrderProduct[];
   subTotal: number;
   discount: number;
   tax: number;
@@ -112,7 +128,7 @@ export interface Order {
 export interface Table {
   id?: string; // "t1"
   name: string; // "طاولة 1"
-  status: "available" | "occupied" | "reserved" | "closed";
+  status: TableStatus;
   currentOrderId?: string; // "o12"
   capacity: number;
   location?: string;
@@ -136,4 +152,81 @@ export interface Product {
     }[];
   available: boolean; //true,
   createdAt: string;
+}
+
+export interface CheckoutPayload {
+  tableId: string;
+  orderData: {
+    id: string;
+    paymentMethod: PaymentMode;
+    items: OrderItem[];
+    products?: OrderProduct[];
+  };
+  createdBy: string;
+  customerId: string;
+  paymentData: {
+    isDebt: PaymentMode;
+    amount: number;
+    items: OrderItem[];
+    subTotal: number;
+    discount: number;
+    total: number;
+    paidAmount: number;
+    remainingAmount: number;
+    dueDate: string | null;
+    notes: string;
+    note: string;
+    paymentMethod?: string;
+  };
+}
+
+export interface DashboardSummary {
+  range: { from: string; to: string };
+  totals: {
+    sales: number;
+    purchases: number;
+    net: number;
+    customerDebt: number;
+    supplierDebt: number;
+  };
+  tables: {
+    total: number;
+    available: number;
+    occupied: number;
+    reserved: number;
+    closed: number;
+  };
+  orders: {
+    open: number;
+    paidToday: number;
+  };
+  inventory: {
+    totalItems: number;
+    lowStockCount: number;
+    lowStockItems: InventoryItem[];
+  };
+  topProducts: {
+    id: string;
+    name: string;
+    category: string;
+    timesSold: number;
+    revenue: number;
+  }[];
+  recentPayments: Payment[];
+}
+
+export interface DataAuditReport {
+  generatedAt: string;
+  counts: {
+    tables: number;
+    orders: number;
+    inventoryItems: number;
+    invoices: number;
+    payments: number;
+  };
+  issues: {
+    scope: "tables" | "orders" | "inventory" | "invoices" | "payments";
+    id: string;
+    message: string;
+  }[];
 }

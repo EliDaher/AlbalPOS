@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 type PopupFormProps = {
   title?: string;
-  trigger: ReactNode;
+  trigger?: ReactNode;
   children: ReactNode;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
@@ -19,27 +19,23 @@ export default function PopupForm({
 }: PopupFormProps) {
   return (
     <>
-      {/* الزر المحفز */}
-      <div
-        onClick={() => setIsOpen(true)}
-        className="inline-block cursor-pointer"
-      >
-        {trigger}
-      </div>
+      {trigger && (
+        <div onClick={() => setIsOpen(true)} className="inline-block cursor-pointer">
+          {trigger}
+        </div>
+      )}
 
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* الخلفية */}
             <motion.div
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 z-50 bg-black/50"
               onClick={() => setIsOpen(false)}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             />
 
-            {/* محتوى البوب أب */}
             <motion.div
               className="fixed inset-0 z-50 flex items-center justify-center px-4"
               initial={{ opacity: 0 }}
@@ -47,28 +43,26 @@ export default function PopupForm({
               exit={{ opacity: 0 }}
             >
               <motion.div
-                className="bg-gradient-to-bl from-primary-100 to-primary-50 w-full max-w-lg rounded-2xl shadow-xl p-6 relative"
-                initial={{ scale: 0.9, y: 40, opacity: 0 }}
+                dir="rtl"
+                className="relative w-full max-w-lg rounded-lg border bg-card p-6 shadow-xl"
+                initial={{ scale: 0.96, y: 24, opacity: 0 }}
                 animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.9, y: 40, opacity: 0 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                onClick={(e) => e.stopPropagation()}
+                exit={{ scale: 0.96, y: 24, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                onClick={(event) => event.stopPropagation()}
               >
-                <div className="flex flex-row justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold text-foreground">
-                    {title}
-                  </h2>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-foreground">{title}</h2>
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="text-gray-400 hover:text-red-500 transition"
+                    className="text-muted-foreground transition hover:text-destructive"
                     aria-label="إغلاق"
                   >
-                    <X size={24} />
+                    <X size={22} />
                   </button>
                 </div>
 
-                {/* المحتوى */}
-                <div className="space-y-4 p-1 max-h-[80vh] overflow-y-auto">
+                <div className="max-h-[80vh] space-y-4 overflow-y-auto p-1">
                   {children}
                 </div>
               </motion.div>

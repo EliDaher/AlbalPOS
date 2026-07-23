@@ -9,7 +9,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -17,7 +17,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <ScreenWrapper>
-      <div className="flex h-screen overflow-hidden text-foreground">
+      <div className="flex h-screen flex-row overflow-hidden text-foreground">
         <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onToggleSidebar={toggleSidebar} />

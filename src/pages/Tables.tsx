@@ -1,85 +1,85 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import TopTable from "@/components/Tables/TopTable";
+import { DataTable } from "@/components/dashboard/DataTable";
 import { Button } from "@/components/ui/button";
 import FormInput from "@/components/ui/custom/FormInput";
 import PopupForm from "@/components/ui/custom/PopupForm";
-import getAllTables, {
-  createTables,
-  updateTableState,
-} from "@/services/tables";
-import { Table } from "@/Types/POSTypes";
+import getAllTables, { createTables } from "@/services/tables";
+import { Table, TableStatus } from "@/Types/POSTypes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Loader2,
-  PlusCircle,
   AlertTriangle,
   LayoutGrid,
+  List,
+  Loader2,
+  PlusCircle,
   TableIcon,
 } from "lucide-react";
-import { inventoryUser } from "@/components/layout/Header";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-export default function Tables() {
-  const [inventoryUser, setInventoryUser] = useState<inventoryUser>();
-  useEffect(() => {
-    const temUser = JSON.parse(localStorage.getItem("InventoryUser") || "null");
-    setInventoryUser(temUser);
-  }, []);
+const statusLabels: Record<TableStatus, string> = {
+  available: "متاحة",
+  occupied: "مشغولة",
+  reserved: "محجوزة",
+  closed: "مغلقة",
+};
 
+export default function Tables() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTable, setActiveTable] = useState<Table | null>(null);
-  const [state, setState] = useState<
-    "available" | "occupied" | "reserved" | "closed"
-  >("available");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
+  const [statusFilter, setStatusFilter] = useState<TableStatus | "all">("all");
   const [formData, setFormData] = useState({
     name: "",
     location: "",
     capacity: 1,
   });
-  const [note, setNote] = useState("");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("grid"); 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const {
-    data: tables,
+    data: tables = [],
     isLoading,
     isError,
-  } = useQuery({
+  } = useQuery<Table[]>({
     queryKey: ["tables-table"],
     queryFn: getAllTables,
+    refetchInterval: 30_000,
   });
+
+  const filteredTables = useMemo(
+    () =>
+      statusFilter === "all"
+        ? tables
+        : tables.filter((table) => table.status === statusFilter),
+    [statusFilter, tables],
+  );
+
+  const counts = useMemo(
+    () => ({
+      total: tables.length,
+      available: tables.filter((table) => table.status === "available").length,
+      occupied: tables.filter((table) => table.status === "occupied").length,
+      reserved: tables.filter((table) => table.status === "reserved").length,
+      closed: tables.filter((table) => table.status === "closed").length,
+    }),
+    [tables],
+  );
 
   const addTableMutation = useMutation({
     mutationFn: (table: Table) => createTables({ table }),
     onSuccess: () => {
       setFormData({ name: "", location: "", capacity: 1 });
-      toast.success("تمت العملية بنجاح");
+      toast.success("تمت إضافة الطاولة بنجاح");
       setIsOpen(false);
       queryClient.invalidateQueries({ queryKey: ["tables-table"] });
     },
     onError: () => toast.error("حدث خطأ أثناء إضافة الطاولة"),
   });
 
-  const updateTableMutation = useMutation({
-    mutationFn: (dataToSend: {
-      id: string;
-      state: string;
-      note: string;
-      user: string;
-    }) => updateTableState(dataToSend),
-    onSuccess: () => {
-      toast.success("تم تعديل حالة الطاولة بنجاح");
-      setActiveTable(null);
-      queryClient.invalidateQueries({ queryKey: ["tables-table"] });
-    },
-    onError: () => toast.error("حدث خطأ أثناء تعديل حالة الطاولة"),
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     const { name, location, capacity } = formData;
     if (!name.trim()) return toast.error("يرجى إدخال اسم الطاولة");
     addTableMutation.mutate({
@@ -90,21 +90,42 @@ export default function Tables() {
     } as Table);
   };
 
+  const tableColumns = [
+    { key: "name", label: "الاسم", sortable: true },
+    { key: "location", label: "الموقع", sortable: true },
+    {
+      key: "capacity",
+      label: "السعة",
+      sortable: true,
+      render: (row: Table) => `${Number(row.capacity || 0) * 2} مقاعد`,
+    },
+    {
+      key: "status",
+      label: "الحالة",
+      sortable: true,
+      render: (row: Table) => statusLabels[row.status],
+    },
+  ];
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* ✅ العنوان + زر الإضافة + خيارات العرض */}
-        <div className="flex justify-between items-center flex-wrap gap-3">
-          <h1 className="text-2xl font-bold text-gray-800">إدارة الطاولات</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">إدارة الطاولات</h1>
+            <p className="text-sm text-muted-foreground">
+              راقب حالة الصالة وافتح الطلبات بسرعة
+            </p>
+          </div>
 
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             <PopupForm
               title="إضافة طاولة جديدة"
               isOpen={isOpen}
               setIsOpen={setIsOpen}
               trigger={
-                <Button variant="accent" className="flex items-center gap-2">
-                  <PlusCircle className="w-4 h-4" />
+                <Button>
+                  <PlusCircle className="h-4 w-4" />
                   إضافة طاولة
                 </Button>
               }
@@ -112,18 +133,18 @@ export default function Tables() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <FormInput
                   label="اسم الطاولة"
-                  placeholder="مثل: طاولة 1"
+                  placeholder="مثال: طاولة 1"
                   value={formData.name}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, name: e.target.value }))
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, name: event.target.value }))
                   }
                 />
                 <FormInput
                   label="الموقع"
-                  placeholder="الزاوية اليمنى - القسم الداخلي"
+                  placeholder="الصالة الداخلية، الشرفة..."
                   value={formData.location}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, location: e.target.value }))
+                  onChange={(event) =>
+                    setFormData((prev) => ({ ...prev, location: event.target.value }))
                   }
                 />
                 <FormInput
@@ -131,219 +152,125 @@ export default function Tables() {
                   type="number"
                   min={1}
                   value={formData.capacity}
-                  onChange={(e) =>
-                    setFormData((p) => ({
-                      ...p,
-                      capacity: Number(e.target.value),
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      capacity: Number(event.target.value),
                     }))
                   }
                 />
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={addTableMutation.isPending}
+                  loading={addTableMutation.isPending}
                 >
-                  {addTableMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "تأكيد الإضافة"
-                  )}
+                  تأكيد الإضافة
                 </Button>
               </form>
             </PopupForm>
+
             <Button
               variant={viewMode === "grid" ? "default" : "outline"}
+              size="icon"
               onClick={() => setViewMode("grid")}
-              className="flex items-center gap-2"
+              title="عرض كبطاقات"
             >
-              <LayoutGrid className="w-4 h-4" />
-              عرض كبطاقات
+              <LayoutGrid className="h-4 w-4" />
             </Button>
             <Button
               variant={viewMode === "table" ? "default" : "outline"}
+              size="icon"
               onClick={() => setViewMode("table")}
-              className="flex items-center gap-2"
+              title="عرض كجدول"
             >
-              <TableIcon className="w-4 h-4" />
-              عرض كجدول
+              <List className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* ✅ تحميل / خطأ */}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {[
+            ["all", "الكل", counts.total],
+            ["available", "متاحة", counts.available],
+            ["occupied", "مشغولة", counts.occupied],
+            ["reserved", "محجوزة", counts.reserved],
+            ["closed", "مغلقة", counts.closed],
+          ].map(([key, label, count]) => (
+            <button
+              type="button"
+              key={String(key)}
+              onClick={() => setStatusFilter(key as TableStatus | "all")}
+              className={`rounded-md border p-3 text-right transition ${
+                statusFilter === key ? "border-primary bg-primary/10" : "bg-card"
+              }`}
+            >
+              <p className="text-sm text-muted-foreground">{label}</p>
+              <p className="text-2xl font-bold">{count}</p>
+            </button>
+          ))}
+        </div>
+
         {isLoading && (
           <div className="flex justify-center py-10">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         )}
         {isError && (
-          <div className="flex justify-center items-center gap-2 py-10 text-red-500">
-            <AlertTriangle className="w-5 h-5" />
+          <div className="flex items-center justify-center gap-2 py-10 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
             <span>فشل في تحميل الطاولات</span>
           </div>
         )}
 
-        {/* ✅ عرض الطاولات */}
-        {tables && viewMode === "grid" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {tables.map((t: Table) => (
-              <div key={t.id} className="flex flex-col">
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/tableDetails/${t.id}`, { state: t });
-                  }}
-                >
-                  <TopTable
-                    tableName={t.name}
-                    chairsPerSide={t.capacity}
-                    state={t.status}
-                    location={t.location}
-                  />
+        {!isLoading && !isError && viewMode === "grid" && (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredTables.map((table) => (
+              <button
+                type="button"
+                key={table.id}
+                className="text-right"
+                onClick={() => navigate(`/tableDetails/${table.id}`, { state: table })}
+              >
+                <TopTable
+                  tableName={table.name}
+                  chairsPerSide={table.capacity}
+                  state={table.status}
+                  location={table.location}
+                />
+                <div className="mt-2 flex items-center justify-between rounded-md border bg-card px-3 py-2 text-sm">
+                  <span>{statusLabels[table.status]}</span>
+                  <span>تفاصيل</span>
                 </div>
-                <Button
-                  variant="outline"
-                  className="mt-2"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate(`/tableDetails/${t.id}`, { state: t });
-                  }}
-                >
-                  تفاصيل
-                </Button>
-              </div>
+              </button>
             ))}
           </div>
         )}
 
-        {tables && viewMode === "table" && (
-          <div className="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
-            <table className="min-w-full text-sm text-right">
-              <thead className="bg-gray-100 text-gray-700 font-semibold">
-                <tr>
-                  <th className="p-3">الاسم</th>
-                  <th className="p-3">الموقع</th>
-                  <th className="p-3">السعة</th>
-                  <th className="p-3">الحالة</th>
-                  <th className="p-3">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tables.map((t: Table) => (
-                  <tr
-                    key={t.id}
-                    className="border-t hover:bg-gray-50 transition cursor-pointer"
-                    // onDoubleClick={() => setActiveTable(t)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/tableDetails/${t.id}`, { state: t });
-                    }}
-                  >
-                    <td className="p-3">{t.name}</td>
-                    <td className="p-3">{t.location || "-"}</td>
-                    <td className="p-3 text-center">{t.capacity * 2}</td>
-                    <td
-                      className={`p-3 font-medium ${
-                        t.status === "available"
-                          ? "text-green-600"
-                          : t.status === "occupied"
-                            ? "text-red-600"
-                            : t.status === "reserved"
-                              ? "text-yellow-600"
-                              : "text-gray-600"
-                      }`}
-                    >
-                      {t.status === "available"
-                        ? "متاحة"
-                        : t.status === "occupied"
-                          ? "مشغولة"
-                          : t.status === "reserved"
-                            ? "محجوزة"
-                            : "مغلقة"}
-                    </td>
-                    <td className="p-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/tableDetails/${t.id}`, { state: t });
-                        }}
-                      >
-                        تفاصيل
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* ✅ نافذة تعديل الحالة */}
-        {activeTable && (
-          <PopupForm
-            title={`تعديل حالة ${activeTable.name}`}
-            isOpen={!!activeTable}
-            setIsOpen={() => setActiveTable(null)}
-            trigger
-          >
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                updateTableMutation.mutate({
-                  id: activeTable.id,
-                  state,
-                  note,
-                  user: inventoryUser?.username || "غير معروف",
-                });
-              }}
-            >
-              <div className="flex gap-2 mb-4 justify-center items-center">
-                <Button
-                  type="button"
-                  className="w-full"
-                  variant={state === "available" ? "accent" : "outline"}
-                  onClick={() => setState("available")}
-                >
-                  متاحة
-                </Button>
-                <Button
-                  type="button"
-                  className="w-full"
-                  variant={state === "reserved" ? "accent" : "outline"}
-                  onClick={() => setState("reserved")}
-                >
-                  محجوزة
-                </Button>
-                <Button
-                  type="button"
-                  className="w-full"
-                  variant={state === "occupied" ? "accent" : "outline"}
-                  onClick={() => setState("occupied")}
-                >
-                  مشغولة
-                </Button>
-              </div>
-              <FormInput
-                label="ملاحظات"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
+        {!isLoading && !isError && viewMode === "table" && (
+          <DataTable
+            title="الطاولات"
+            data={filteredTables}
+            columns={tableColumns}
+            onRowClick={(row) => navigate(`/tableDetails/${row.id}`, { state: row })}
+            renderRowActions={(row) => (
               <Button
-                type="submit"
-                className="w-full mt-4"
-                disabled={updateTableMutation.isPending}
+                size="sm"
+                variant="outline"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/tableDetails/${row.id}`, { state: row });
+                }}
               >
-                {updateTableMutation.isPending ? "جاري الحفظ ..." : "حفظ"}
+                <TableIcon className="h-4 w-4" />
+                تفاصيل
               </Button>
-            </form>
-          </PopupForm>
+            )}
+          />
         )}
 
-        {!isLoading && tables?.length === 0 && (
-          <p className="text-center text-gray-500 py-10">
-            لا توجد طاولات حالياً — قم بإضافة طاولة جديدة.
+        {!isLoading && !isError && filteredTables.length === 0 && (
+          <p className="py-10 text-center text-muted-foreground">
+            لا توجد طاولات ضمن هذا الفلتر
           </p>
         )}
       </div>

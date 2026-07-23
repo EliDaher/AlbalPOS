@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import getAllCustomer from "@/services/customers";
 import getPayments from "@/services/payments";
+import getAllSupplier from "@/services/supplier";
 import {
   BarChart,
   Bar,
@@ -15,159 +16,154 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Box } from "lucide-react";
-
-// ✅ أنواع البيانات
-interface Payment {
-  id: string;
-  invoiceId: string;
-  type: "purchase" | "sale";
-  relatedId: string;
-  amount: number;
-  method: string;
-  date: string;
-  note: string;
-  createdBy: string;
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  notes: string;
-  totalOrders: number;
-  totalSpent: number;
-  createdAt: string;
-}
+import { ArrowDown, ArrowUp, Box, WalletCards } from "lucide-react";
+import { formatCurrency, formatMonthLabel } from "@/lib/pos";
+import { Button } from "@/components/ui/button";
 
 export default function Balance() {
-  // ✅ جلب البيانات من الـ API
-  const { data: payments = [] } = useQuery<Payment[]>({
+  const today = new Date().toISOString().slice(0, 10);
+  const [from, setFrom] = useState(today);
+  const [to, setTo] = useState(today);
+  const [typeFilter, setTypeFilter] = useState<"all" | "sale" | "purchase">("all");
+
+  const {
+    data: payments = [],
+    isLoading,
+    isError,
+  } = useQuery<any[]>({
     queryKey: ["payments-table"],
     queryFn: getPayments,
   });
 
-  const { data: customers = [] } = useQuery<Customer[]>({
+  const { data: customers = [] } = useQuery<any[]>({
     queryKey: ["customers-table"],
     queryFn: getAllCustomer,
   });
 
-  // ✅ اليوم الحالي
-  const today = new Date().toISOString().split("T")[0];
+  const { data: suppliers = [] } = useQuery<any[]>({
+    queryKey: ["suppliers-table"],
+    queryFn: getAllSupplier,
+  });
 
-  // ✅ المبيعات والمشتريات الكلية
+  const filteredPayments = useMemo(
+    () =>
+      payments.filter((payment) => {
+        const date = new Date(payment.date || 0).toISOString().slice(0, 10);
+        const matchesDate = date >= from && date <= to;
+        const matchesType = typeFilter === "all" || payment.type === typeFilter;
+        return matchesDate && matchesType;
+      }),
+    [from, payments, to, typeFilter],
+  );
+
   const totalSales = useMemo(
     () =>
-      payments
-        .filter((p) => p.type === "sale")
-        .reduce((sum, item) => sum + (item.amount || 0), 0),
-    [payments],
+      filteredPayments
+        .filter((payment) => payment.type === "sale")
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0),
+    [filteredPayments],
   );
 
   const totalPurchases = useMemo(
     () =>
-      -payments
-        .filter((p) => p.type === "purchase")
-        .reduce((sum, item) => sum + (item.amount || 0), 0),
-    [payments],
+      filteredPayments
+        .filter((payment) => payment.type === "purchase")
+        .reduce((sum, payment) => sum + Math.abs(Number(payment.amount || 0)), 0),
+    [filteredPayments],
   );
 
-  // ✅ المبيعات والمشتريات اليومية
-  const todaySales = useMemo(
-    () =>
-      payments
-        .filter(
-          (p) => p.type === "sale" && p.date.startsWith(today), // مقارنة بالتاريخ فقط
-        )
-        .reduce((sum, item) => sum + (item.amount || 0), 0),
-    [payments],
-  );
-
-  const todayPurchases = useMemo(
-    () =>
-      payments
-        .filter((p) => p.type === "purchase" && p.date.startsWith(today))
-        .reduce((sum, item) => sum + (item.amount || 0), 0),
-    [payments],
-  );
-
-  // ✅ تجهيز بيانات الرسم البياني الشهري
-  const chartData =
-    payments.reduce<
+  const chartArray = Object.values(
+    filteredPayments.reduce<
       Record<string, { month: string; sales: number; purchases: number }>
-    >((acc, p) => {
-      const month = new Date(p.date).toLocaleString("ar-SY", {
-        month: "short",
-        year: "2-digit",
-      });
+    >((acc, payment) => {
+      const month = formatMonthLabel(payment.date);
       if (!acc[month]) acc[month] = { month, sales: 0, purchases: 0 };
-      if (p.type === "sale") acc[month].sales += p.amount;
-      else acc[month].purchases += p.amount;
+      if (payment.type === "sale") acc[month].sales += Number(payment.amount || 0);
+      else acc[month].purchases += Math.abs(Number(payment.amount || 0));
       return acc;
-    }, {}) ?? {};
+    }, {}),
+  );
 
-  const chartArray = Object.values(chartData);
+  const paymentsWithNames = filteredPayments.map((payment) => {
+    const customer = customers.find((item) => item.id === payment.relatedId);
+    const supplier = suppliers.find((item) => item.id === payment.relatedId);
+    return {
+      ...payment,
+      typeLabel: payment.type === "sale" ? "بيع" : "شراء",
+      relatedName: customer?.name || supplier?.name || "غير معروف",
+    };
+  });
 
-  // ✅ دمج أسماء العملاء أو الموردين حسب الـ relatedId
-  const paymentsWithCustomer = payments.map((p) => ({
-    ...p,
-    customerName:
-      customers.find((c) => c.id === p.relatedId)?.name || "غير معروف",
-  }));
-
-  // ✅ أعمدة الجدول
   const paymentsColumns = [
-    { key: "id", label: "الرمز", sortable: true, hidden: true },
     { key: "amount", label: "المبلغ", sortable: true },
-    { key: "note", label: "الملاحظة", sortable: true },
+    { key: "typeLabel", label: "النوع", sortable: true },
+    { key: "relatedName", label: "الزبون / المورد", sortable: true },
     { key: "method", label: "طريقة الدفع", sortable: true },
-    { key: "type", label: "النوع", sortable: true },
-    { key: "customerName", label: "العميل / المورد", sortable: true },
-    {
-      key: "date",
-      label: "التاريخ",
-      sortable: true,
-      render: (row: Payment) =>
-        new Date(row.date).toLocaleString("ar-SY", {
-          dateStyle: "short",
-          timeStyle: "short",
-        }),
-    },
+    { key: "note", label: "الملاحظة", sortable: true },
+    { key: "createdBy", label: "المستخدم", sortable: true },
+    { key: "date", label: "التاريخ", sortable: true },
   ];
 
   return (
     <DashboardLayout>
-      <div className="p-4 space-y-6">
-        {/* 🧾 الإحصاءات العامة */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatsCard title="إجمالي المبيعات" icon={Box} value={totalSales} />
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">الرصيد والصندوق</h1>
+            <p className="text-sm text-muted-foreground">
+              تابع المقبوضات والمدفوعات حسب الفترة
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+              className="rounded-md border bg-background px-3 py-2 text-sm"
+            />
+            <input
+              type="date"
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              className="rounded-md border bg-background px-3 py-2 text-sm"
+            />
+            {[
+              ["all", "الكل"],
+              ["sale", "بيع"],
+              ["purchase", "شراء"],
+            ].map(([key, label]) => (
+              <Button
+                key={key}
+                variant={typeFilter === key ? "default" : "outline"}
+                onClick={() => setTypeFilter(key as "all" | "sale" | "purchase")}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <StatsCard title="المقبوضات" icon={ArrowDown} value={formatCurrency(totalSales)} />
           <StatsCard
-            title="إجمالي المشتريات"
-            icon={Box}
-            value={totalPurchases}
+            title="المدفوعات"
+            icon={ArrowUp}
+            value={formatCurrency(totalPurchases)}
           />
           <StatsCard
-            title="الرصيد الصافي"
+            title="صافي الصندوق"
+            icon={WalletCards}
+            value={formatCurrency(totalSales - totalPurchases)}
+          />
+          <StatsCard
+            title="عدد الحركات"
             icon={Box}
-            value={totalSales - totalPurchases}
+            value={filteredPayments.length}
           />
         </div>
 
-        {/* 💰 إحصاءات اليوم */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatsCard title="مقبوضات اليوم" icon={Box} value={todaySales} />
-          <StatsCard title="مدفوعات اليوم" icon={Box} value={todayPurchases} />
-          <StatsCard
-            title="صندوق اليوم"
-            icon={Box}
-            value={todaySales - todayPurchases}
-          />
-        </div>
-
-        {/* 📊 الرسم البياني المالي */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow p-4">
-          <h2 className="text-xl font-bold mb-2">توزيع الدفعات الشهرية</h2>
+        <div className="rounded-lg border bg-card p-4 shadow-sm">
+          <h2 className="mb-2 text-xl font-bold">توزيع الدفعات</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartArray}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -175,25 +171,20 @@ export default function Balance() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar
-                dataKey="sales"
-                name="المبيعات"
-                fill="hsl(var(--secondary))"
-              />
-              <Bar
-                dataKey="purchases"
-                name="المشتريات"
-                fill="hsl(var(--accent))"
-              />
+              <Bar dataKey="sales" name="المبيعات" fill="hsl(var(--secondary))" />
+              <Bar dataKey="purchases" name="المشتريات" fill="hsl(var(--accent))" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* 🧾 جدول الدفعات */}
         <DataTable
-          data={paymentsWithCustomer}
+          data={paymentsWithNames}
           title="سجل الدفعات"
           columns={paymentsColumns}
+          isLoading={isLoading}
+          isError={isError}
+          exportFilename="سجل الدفعات"
+          amountBold
         />
       </div>
     </DashboardLayout>

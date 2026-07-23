@@ -124,6 +124,22 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    direction: rtl;
+    unicode-bidi: plaintext;
+  }
+
+  input,
+  textarea,
+  select {
+    direction: rtl;
+  }
+
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  .tabular-nums {
+    direction: ltr;
+    unicode-bidi: plaintext;
   }
 }
 

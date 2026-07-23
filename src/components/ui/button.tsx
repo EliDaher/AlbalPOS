@@ -67,25 +67,36 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const Comp = asChild ? Slot : "button";
-
     if (asChild && !React.isValidElement(children)) {
       throw new Error(
         "Button with asChild expects a single React element child",
       );
     }
 
+    if (asChild) {
+      return (
+        <Slot
+          ref={ref}
+          className={cn(buttonVariants({ variant, size }), className)}
+          disabled={disabled}
+          {...props}
+        >
+          {children}
+        </Slot>
+      );
+    }
+
     return (
-      <Comp
+      <button
         ref={ref}
         className={cn(buttonVariants({ variant, size }), className)}
-        disabled={!asChild ? disabled || loading : disabled}
+        disabled={disabled || loading}
         aria-busy={loading}
         {...props}
       >
-        {!asChild && loading && <Loader2 className="animate-spin" />}
+        {loading && <Loader2 className="animate-spin" />}
         {children}
-      </Comp>
+      </button>
     );
   },
 );

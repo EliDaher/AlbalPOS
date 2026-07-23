@@ -8,123 +8,126 @@ import getAllInventoryItems from "@/services/inventory";
 import createNewProduct, { getAllProducts } from "@/services/products";
 import { InventoryItem, Product } from "@/Types/POSTypes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { formatCurrency } from "@/lib/pos";
+
+type IngredientDraft = {
+  itemId: string;
+  itemName: string;
+  quantity: number;
+};
 
 export default function Products() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-
-  // Form Inputs
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState<number | "">("");
   const [available, setAvailable] = useState(true);
   const [search, setSearch] = useState("");
+  const [ingredients, setIngredients] = useState<IngredientDraft[]>([]);
 
-  // Ingredients
-  const [ingredients, setIngredients] = useState([]);
-
-  const queryClient = useQueryClient();
-
-  // Fetch Products
-  const { data: products } = useQuery({
+  const { data: products = [], isLoading, isError } = useQuery<Product[]>({
     queryKey: ["products-table"],
     queryFn: getAllProducts,
   });
 
-  const { data: items, isLoading: itemsLoading } = useQuery({
+  const { data: items = [], isLoading: itemsLoading } = useQuery<InventoryItem[]>({
     queryKey: ["items-table"],
     queryFn: getAllInventoryItems,
   });
 
-  // Create Product
   const createProductMutation = useMutation({
     mutationFn: (data: Product) => createNewProduct(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products-table"] });
-
-      // Reset fields
       setName("");
       setCategory("");
       setPrice("");
       setIngredients([]);
       setAvailable(true);
       setIsOpen(false);
+      toast.success("تم إنشاء المنتج بنجاح");
     },
-    onError: () => {
-      alert("حدث خطأ أثناء إضافة المنتج");
-    },
+    onError: () => toast.error("حدث خطأ أثناء إضافة المنتج"),
   });
 
-  // Update ingredient
-  const updateIngredient = (index: number, key: string, value: any) => {
-    setIngredients((prev) => {
-      const copy = [...prev];
-      copy[index][key] = value;
-      return copy;
-    });
-  };
-
-  // Add new ingredient
-  const addIngredient = ({ itemId, itemName, quantity }) => {
-    setIngredients((prev) => {
-      const exists = prev.find((p) => p.itemId === itemId);
-
-      if (exists) {
-        return prev.map((p) =>
-          p.itemId === itemId
-            ? { ...p, quantity: Number(p.quantity) + Number(quantity) }
-            : p,
-        );
-      }
-
-      return [...prev, { itemId, itemName, quantity: Number(quantity) || 0 }];
-    });
-
-    setSearch("");
-  };
-
-  const filteredItem = useMemo(
+  const filteredItems = useMemo(
     () =>
-      items?.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
+      items.filter((item) =>
+        item.name.toLowerCase().includes(search.trim().toLowerCase()),
+      ),
     [items, search],
   );
 
-  const costPrice = useMemo(() => {
-    return ingredients.reduce((total, ing) => {
-      const item: InventoryItem = items?.find((i) => i.id === ing.itemId);
-      if (!item) return total;
-      return total + ing.quantity * item.costPerUnit; // أو costPerUnit لديك
-    }, 0);
-  }, [ingredients, items]);
+  const costPrice = useMemo(
+    () =>
+      ingredients.reduce((total, ingredient) => {
+        const item = items.find((stockItem) => stockItem.id === ingredient.itemId);
+        return total + Number(ingredient.quantity || 0) * Number(item?.costPerUnit || 0);
+      }, 0),
+    [ingredients, items],
+  );
 
-  const sellPrice = useMemo(() => {
-    return ingredients.reduce((total, ing) => {
-      const item: InventoryItem = items?.find((i) => i.id === ing.itemId);
-      if (!item) return total;
-      return total + ing.quantity * item.sellPerUnit; // أو costPerUnit لديك
-    }, 0);
-  }, [ingredients, items]);
+  const suggestedSellPrice = useMemo(
+    () =>
+      ingredients.reduce((total, ingredient) => {
+        const item = items.find((stockItem) => stockItem.id === ingredient.itemId);
+        return total + Number(ingredient.quantity || 0) * Number(item?.sellPerUnit || 0);
+      }, 0),
+    [ingredients, items],
+  );
 
-  // Delete ingredient
-  const deleteIngredient = (index: number) => {
-    setIngredients((prev) => prev.filter((_, i) => i !== index));
+  const addIngredient = (item: InventoryItem) => {
+    setIngredients((prev) => {
+      const exists = prev.find((ingredient) => ingredient.itemId === item.id);
+      if (exists) {
+        return prev.map((ingredient) =>
+          ingredient.itemId === item.id
+            ? { ...ingredient, quantity: ingredient.quantity + 1 }
+            : ingredient,
+        );
+      }
+      return [
+        ...prev,
+        {
+          itemId: item.id || "",
+          itemName: item.name,
+          quantity: 1,
+        },
+      ];
+    });
+    setSearch("");
+  };
+
+  const updateIngredient = (
+    index: number,
+    key: keyof IngredientDraft,
+    value: string | number,
+  ) => {
+    setIngredients((prev) =>
+      prev.map((ingredient, currentIndex) =>
+        currentIndex === index ? { ...ingredient, [key]: value } : ingredient,
+      ),
+    );
   };
 
   const handleCreateProduct = () => {
-    if (!name || !category || !costPrice || !price) {
-      alert("يجب تعبئة جميع الحقول الأساسية");
+    if (!name.trim() || !category.trim() || !price) {
+      toast.error("يجب تعبئة اسم المنتج والصنف وسعر البيع");
       return;
     }
 
-    if (ingredients.length <= 0) {
-      alert("الرجاء اختيار مكون واحد على الاقل");
+    if (ingredients.length === 0) {
+      toast.error("الرجاء اختيار مكون واحد على الأقل");
       return;
     }
 
-    const newProduct: Product = {
+    createProductMutation.mutate({
       id: crypto.randomUUID(),
       name,
       category,
@@ -135,172 +138,163 @@ export default function Products() {
       ingredients,
       available,
       createdAt: new Date().toISOString(),
-    };
-
-    createProductMutation.mutate(newProduct);
+    });
   };
 
-  const ProductsColumns = [
-    { key: "id", label: "الرمز", sortable: true, hidden: true },
+  const columns = [
     { key: "name", label: "الاسم", sortable: true },
     { key: "category", label: "الصنف", sortable: true },
     { key: "prepTime", label: "وقت التحضير", sortable: true },
     { key: "cost", label: "التكلفة", sortable: true },
-    { key: "price", label: "سعر المبيع", sortable: true },
+    { key: "price", label: "سعر البيع", sortable: true },
     { key: "timesSold", label: "مرات البيع", sortable: true },
+    {
+      key: "available",
+      label: "الحالة",
+      sortable: true,
+      render: (row: Product) => (row.available ? "متوفر" : "غير متوفر"),
+      exportValue: (row: Product) => (row.available ? "متوفر" : "غير متوفر"),
+    },
   ];
 
   return (
     <DashboardLayout>
-      {/* Popup Form */}
-      <PopupForm
-        title="إنشاء منتج"
-        isOpen={isOpen}
-        setIsOpen={setIsOpen}
-        trigger={null}
-      >
-        <div className="grid grid-cols-2 gap-2 p-2">
-          <FormInput
-            label="اسم المنتج"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-
-          <FormInput
-            label="الصنف"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
-
-          <FormInput
-            label="التكلفة (تحسب تلقائيا)"
-            type="number"
-            value={costPrice}
-          />
-
-          <FormInput
-            label="سعر المبيع"
-            placeholder={sellPrice.toString()}
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
-          />
-
-          {/* Available */}
-          <div className="flex items-center gap-2">
-            <label>متاح للبيع؟</label>
-            <input
-              type="checkbox"
-              checked={available}
-              onChange={() => setAvailable(!available)}
+      <div className="space-y-6">
+        <PopupForm
+          title="إنشاء منتج"
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+        >
+          <div className="grid grid-cols-1 gap-3 p-1 md:grid-cols-2">
+            <FormInput
+              label="اسم المنتج"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
             />
+            <FormInput
+              label="الصنف"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            />
+            <FormInput
+              label="التكلفة التقديرية"
+              type="number"
+              value={costPrice}
+              readOnly
+            />
+            <FormInput
+              label="سعر البيع"
+              placeholder={String(suggestedSellPrice)}
+              type="number"
+              value={price}
+              onChange={(event) => setPrice(Number(event.target.value))}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={available}
+                onChange={() => setAvailable((value) => !value)}
+              />
+              متاح للبيع
+            </label>
           </div>
-        </div>
 
-        {/* Ingredients Section */}
-        <div className="border p-3 rounded-md max-h-64 overflow-y-auto mt-3">
-          <div className="font-semibold mb-2">المكونات</div>
-          <Input
-            placeholder="ابحث عن المنتج بالاسم أو الكود..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="mb-2"
-          />
+          <div className="mt-4 rounded-md border p-3">
+            <div className="mb-2 font-semibold">المكونات</div>
+            <Input
+              placeholder={
+                itemsLoading ? "جاري تحميل المستودع..." : "ابحث عن مادة لإضافتها..."
+              }
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="mb-2 text-right"
+            />
 
-          {/* قائمة البحث */}
-          {search && filteredItem.length > 0 && (
-            <div className="max-h-40 overflow-y-auto border p-2 rounded mb-4">
-              {filteredItem.map((p) => (
+            {search && filteredItems.length > 0 && (
+              <div className="mb-4 max-h-40 overflow-y-auto rounded border p-2">
+                {filteredItems.map((item) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className="flex w-full justify-between rounded p-2 text-right hover:bg-muted"
+                    onClick={() => addIngredient(item)}
+                  >
+                    <span>{item.name} ({item.category})</span>
+                    <span>{formatCurrency(item.sellPerUnit)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {ingredients.map((ingredient, index) => (
                 <div
-                  key={p.id}
-                  className="flex justify-between items-center p-1 hover:bg-gray-100 cursor-pointer"
-                  onClick={() =>
-                    addIngredient({
-                      itemId: p.id,
-                      itemName: p.name,
-                      quantity: 1,
-                    })
-                  }
+                  key={`${ingredient.itemId}-${index}`}
+                  className="grid grid-cols-1 gap-2 rounded-md bg-muted/40 p-2 md:grid-cols-[1fr_120px_auto]"
                 >
-                  <span>
-                    {p.name} ({p.category}) - ${p.sellPerUnit}
-                  </span>
+                  <FormInput label="اسم المادة" value={ingredient.itemName} readOnly />
+                  <FormInput
+                    label="الكمية"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={ingredient.quantity}
+                    onChange={(event) =>
+                      updateIngredient(index, "quantity", Number(event.target.value))
+                    }
+                  />
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={() =>
+                        setIngredients((prev) =>
+                          prev.filter((_, currentIndex) => currentIndex !== index),
+                        )
+                      }
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
-          )}
-          {ingredients.map((ing, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 items-end"
-            >
-              <FormInput label="اسم المادة" value={ing.itemName} />
-              <div className="flex items-center gap-2">
-                <FormInput
-                  label="الكمية"
-                  type="number"
-                  value={ing.quantity}
-                  onChange={(e) =>
-                    updateIngredient(i, "quantity", Number(e.target.value))
-                  }
-                />
-                <FormInput
-                  label="مبيع الواحدة"
-                  type="number"
-                  value={
-                    ing.itemId
-                      ? items?.find((it) => it.id === ing.itemId)?.sellPerUnit
-                      : 0
-                  }
-                />
+          </div>
 
-                {/* Delete Ingredient */}
-                {ingredients.length > 1 && (
-                  <Button
-                    variant="destructive"
-                    className="h-10 mt-6"
-                    size="icon"
-                    onClick={() => deleteIngredient(i)}
-                  >
-                    <X />
-                  </Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+          <Button
+            className="mt-4 w-full"
+            onClick={handleCreateProduct}
+            loading={createProductMutation.isPending}
+          >
+            إنشاء المنتج
+          </Button>
+        </PopupForm>
 
-        <Button className="mt-4 w-full" onClick={handleCreateProduct}>
-          إنشاء المنتج
-        </Button>
-      </PopupForm>
-
-      {/* Products Table */}
-      <div>
         <DataTable
           title="المنتجات"
           titleButton={
-            <Button onClick={() => setIsOpen(true)}>إنشاء منتج جديد</Button>
+            <Button onClick={() => setIsOpen(true)}>
+              <Plus className="h-4 w-4" />
+              إنشاء منتج جديد
+            </Button>
           }
-          data={products || []}
-          columns={ProductsColumns}
-          renderRowActions={(row) => {
-            return (
-              <div className="flex gap-1">
-                <Button
-                  variant={"outline"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate("/productDetails", {
-                      state: { ...row },
-                    });
-                  }}
-                >
-                  التفاصيل
-                </Button>
-              </div>
-            );
-          }}
+          data={products}
+          columns={columns}
+          isLoading={isLoading}
+          isError={isError}
+          exportFilename="المنتجات"
+          renderRowActions={(row) => (
+            <Button
+              variant="outline"
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate("/productDetails", { state: { ...row } });
+              }}
+            >
+              التفاصيل
+            </Button>
+          )}
         />
       </div>
     </DashboardLayout>
